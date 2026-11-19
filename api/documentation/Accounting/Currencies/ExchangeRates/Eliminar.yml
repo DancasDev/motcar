@@ -1,0 +1,107 @@
+info:
+  name: Eliminar
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/accounting/currencies/{{currency_id}}/exchange-rates/{{exchange_rate_id}}"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Eliminar Tasa de Cambio
+  
+  Mueve una o varias tasas de cambio a la papelera (soft delete).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/accounting/currencies/{{currency_id}}/exchange-rates/{{exchange_rate_id}}` (Individual) o `{{base_url}}/v1/accounting/currencies/{{currency_id}}/exchange-rates` (Masivo)
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:module_code=acc_exchange_rates,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  **Ejemplo Masivo (vía `.../exchange-rates`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Soft delete:** registra `deleted_at`; el registro deja de aparecer en consultas estándar.
+  2. Si hubo registros afectados (`affected > 0`), el sistema invalida la memoria caché de monedas para reevaluar la última tasa vigente.
+  3. **Eliminación permanente:** con `In-Trash: true` el borrado es físico, sujeto a integridad referencial.
+  4. **Eliminación masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Eliminado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro eliminado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (No existía / no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro eliminado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```

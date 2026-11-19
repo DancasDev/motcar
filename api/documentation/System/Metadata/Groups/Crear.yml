@@ -1,0 +1,138 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/groups"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "personal_info",
+        "title": { "es": "Información Personal", "en": "Personal Information" },
+        "description": { "es": "Datos básicos", "en": "Basic data" },
+        "position": 1
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("group_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Grupo de Metadatos
+
+  Crea uno o varios grupos de organización visual para los campos dinámicos del esquema.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/groups` (Individual) o `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/groups?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=sys_metadata,only_user`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  code | string | Obligatorio. Máx: 60. Alpha dash. Único en el esquema. | Código identificador del grupo.
+  title | object | Obligatorio. Multilingüe i18n (min: 1, max: 120 por idioma). | Título descriptivo.
+  description | object | Opcional. Multilingüe i18n (max: 255 por idioma). | Descripción funcional.
+  position | integer | Opcional. Menor o igual a 99. | Orden de visualización.
+  is_disabled | string | Opcional. Valores: "0", "1". Por defecto: "0". | Estado del grupo.
+
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "code": "personal_info",
+    "title": { "es": "Información Personal", "en": "Personal Information" },
+    "description": { "es": "Datos básicos", "en": "Basic data" },
+    "position": 1
+  }
+  ```
+
+  **Ejemplo Masivo (con query `?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "code": "personal_info",
+      "title": { "es": "Información Personal" },
+      "position": 1
+    },
+    {
+      "code": "work_info",
+      "title": { "es": "Información Laboral" },
+      "position": 2
+    }
+  ]
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. El `code` debe ser único entre los grupos del mismo esquema de metadatos.
+  2. `metadata_schema_id` se toma automáticamente del parámetro de la URL.
+  3. Cada inserción exitosa purga la caché consolidada del esquema (`purgeCache`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+
+  **✅ 207 Multi-Status (Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "code": "El campo código es obligatorio."
+    }
+  }
+  ```

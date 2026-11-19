@@ -1,0 +1,153 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/storage/lockers"
+  body:
+    type: json
+    data: |-
+      {
+        "locker_key": "images/profile-pics",
+        "name": "Fotos de perfil",
+        "allowed_mimes": "image/jpeg,image/png",
+        "max_size": 2048,
+        "optimize_file": "1",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("locker_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Locker
+  
+  Registra un nuevo locker. 
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/storage/lockers`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=stg_admin`
+  - **Límite**: 1 (por lote)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  locker_key | string | Requerido. Mín: 3, Máx: 255. Segmentos `a-z0-9` con guion, hasta 10 niveles. Único. | Clave del locker (ruta).
+  name | string | Opcional. Máx: 255. | Nombre descriptivo.
+  allowed_mimes | string | Opcional. MIME types separados por coma; admite comodín (`image/*`, `*/*`). | Tipos MIME permitidos.
+  max_size | integer | Opcional. Natural. | Tamaño máximo (KB).
+  optimize_file | string | Opcional. Valores: "0","1". | Optimizar imagen al subir.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "locker_key": "images/profile-pics",
+    "name": "Fotos de perfil",
+    "allowed_mimes": "image/jpeg,image/png",
+    "max_size": 2048,
+    "optimize_file": "1",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/system/storage/lockers?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "locker_key": "images/profile-pics",
+      "name": "Fotos de perfil",
+      "allowed_mimes": "image/jpeg,image/png",
+      "max_size": 2048,
+      "optimize_file": "1",
+      "is_disabled": "0"
+    },
+    {
+      "locker_key": "images/profile-pics",
+      "name": "Fotos de perfil",
+      "allowed_mimes": "image/jpeg,image/png",
+      "max_size": 2048,
+      "optimize_file": "1",
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Al registrar el locker se inicializa el espacio de almacenamiento correspondiente según el proveedor configurado.
+  2. `locker_key` es inmutable (no editable).
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 10
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 10
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "locker_key": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "locker_key": "El campo debe contener un valor único."
+    }
+  }
+  ```

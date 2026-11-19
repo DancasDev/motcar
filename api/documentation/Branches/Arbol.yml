@@ -1,0 +1,69 @@
+info:
+  name: Arbol
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/tree"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Árbol de Sucursales (mapa)
+  
+  Obtiene la estructura jerárquica indexada de sucursales con rutas de alcance (`scope`), nombres consolidados, estado propio y heredado, y conteo de dependencias directas.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/tree`
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=cmp_branches`
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## ⚙️ Reglas de Negocio
+  1. Devuelve **todas** las sucursales (incluidas deshabilitadas y en papelera) para que el cliente decida qué mostrar.
+  2. Por sucursal incluye:
+     - `scope`: ruta jerárquica de ids desde la raíz (ej: `1`, `1/2`, `1/2/3`).
+     - `name`: breadcrumb de nombres.
+     - `is_disabled` / `deleted_at`: estado propio.
+     - `children_count_all` / `children_count_available`: hijas directas (todas / activas).
+     - `is_inherited_disabled`: `true` si algún ancestro está deshabilitado o eliminado.
+
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "1": {
+        "parent_id": null,
+        "scope": "1",
+        "name": "Sede Central",
+        "is_disabled": false,
+        "deleted_at": null,
+        "children_count_all": 1,
+        "children_count_available": 1,
+        "is_inherited_disabled": false
+      },
+      "2": {
+        "parent_id": 1,
+        "scope": "1/2",
+        "name": "Sede Central / Sucursal Norte",
+        "is_disabled": false,
+        "deleted_at": null,
+        "children_count_all": 0,
+        "children_count_available": 0,
+        "is_inherited_disabled": false
+      }
+    },
+    "limit": null,
+    "affected": 2
+  }
+  ```

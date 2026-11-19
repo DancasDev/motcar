@@ -1,0 +1,80 @@
+info:
+  name: Anular
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/credits/{{credit_id}}/void"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Anulación Administrativa de Saldo a Favor
+  
+  Efectúa la anulación administrativa de un saldo a favor perteneciente a un cliente, revocando su disponibilidad.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/credits/{{credit_id}}/void`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_client_credits,only_user`
+  - **Límite**: no aplica
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo en la petición (Body vacío).
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Integridad Financiera:** Solo se permite anular saldos a favor que **no hayan sido consumidos ni total ni parcialmente** (`available_amount == amount` y `status == "0"`).
+  2. Si el saldo a favor ya fue aplicado en algún recibo de cobro posterior, el sistema denegará la anulación con un error `409 CREDIT_ALREADY_CONSUMED`.
+  3. Si ya se encontraba en estado anulado, retorna `409 CREDIT_ALREADY_VOIDED`.
+  4. La anulación fija atómicamente el estado en `"2"` (Anulado) y el monto disponible (`available_amount`) en `0.00`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Anulación Exitosa)**
+  ```JSON
+  {
+    "status": 200,
+    "message": "El saldo a favor ha sido anulado exitosamente.",
+    "data": {
+      "id": 1,
+      "branch_id": 1,
+      "client_id": 1,
+      "receipt_id": 10,
+      "payment_account_id": 1,
+      "currency_id": 1,
+      "amount": "20.00",
+      "exchange_rate": "1.00000000",
+      "available_amount": "0.00",
+      "status": "2",
+      "created_at": "2026-10-05 14:35:00",
+      "updated_at": "2026-10-05 15:00:00",
+      "deleted_at": null
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Crédito no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "CREDIT_NOT_FOUND",
+    "message": "El saldo a favor especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```
+  
+  **❌ 409 Conflict (Crédito consumido o previamente anulado)**
+  ```JSON
+  {
+    "status": 409,
+    "error": "CREDIT_ALREADY_CONSUMED",
+    "message": "No es posible anular el saldo a favor porque ya ha sido consumido parcial o totalmente en otros comprobantes."
+  }
+  ```

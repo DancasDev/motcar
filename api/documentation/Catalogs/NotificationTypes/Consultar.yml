@@ -1,0 +1,116 @@
+info:
+  name: Consultar
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/catalogs/notification-types"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("notification_type_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Tipos de Notificación
+
+  Recupera un tipo de notificación individual o un listado paginado y filtrado del catálogo del sistema. Usa el motor de consultas.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/catalogs/notification-types` (Lista) o `{{base_url}}/v1/catalogs/notification-types/{{notification_type_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth` (compartido: usuario o cliente autenticado).
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas (ver documentación general): `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID interno del tipo de notificación.
+  code | 0 | L, F, O | Código técnico del tipo de notificación.
+  name | 0 | L, F, O | Nombre localizado en JSON i18n.
+  description | 0 | L, F, O | Descripción localizada en JSON i18n.
+  channels | 0 | L, F, O | Canales soportados (máscara de bits).
+  action_url | 0 | L, F, O | URL de redirección por defecto de la notificación.
+  is_disabled | 0 | L, F, O | Estado (0: activo, 1: inhabilitado).
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de modificación.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## ⚙️ Reglas de Negocio
+  1. Catálogo maestro de tipos de notificación disponibles en la plataforma (solo lectura).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Listado)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": "1",
+        "code": "user_welcome",
+        "name": "{\"es\":\"Bienvenida de usuario\",\"en\":\"User Welcome\"}",
+        "description": "{\"es\":\"Notificación de bienvenida tras el registro o activación del usuario.\",\"en\":\"Welcome notification after user registration or activation.\"}",
+        "channels": "0",
+        "action_url": null,
+        "is_disabled": "0",
+        "created_at": "2026-09-27 07:19:50",
+        "updated_at": "2026-09-27 07:36:35"
+      }
+    ],
+    "count": 3,
+    "limit": 255,
+    "in_trash": false
+  }
+  ```
+
+  **✅ 200 OK (Individual)**
+  ```JSON
+  {
+    "data": {
+      "id": "1",
+      "code": "user_welcome",
+      "name": "{\"es\":\"Bienvenida de usuario\",\"en\":\"User Welcome\"}",
+      "description": "{\"es\":\"Notificación de bienvenida tras el registro o activación del usuario.\",\"en\":\"Welcome notification after user registration or activation.\"}",
+      "channels": "0",
+      "action_url": null,
+      "is_disabled": "0",
+      "created_at": "2026-09-27 07:19:50",
+      "updated_at": "2026-09-27 07:36:35"
+    },
+    "in_trash": false
+  }
+  ```
+
+  **❌ 404 Registro No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

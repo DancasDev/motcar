@@ -1,0 +1,81 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/my/notifications/push/devices/{{device_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "device_name": "Pixel 8 Pro (Oficina)"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Dispositivo Push
+
+  Modifica los datos de un dispositivo registrado del usuario autenticado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications/push/devices/{{device_id}}`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:only_user`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `device_name` | `string` | Opcional. Máx: 100. | Nombre amigable del dispositivo.
+  `notifications_enabled` | `integer` | Opcional. Valores: 0, 1. | Habilitar o silenciar push en este dispositivo.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Actualizado)**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Configuración del dispositivo actualizada exitosamente."
+    }
+  }
+  ```
+
+  **✅ 200 OK (Sin cambios)**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+
+  **❌ 404 Record Not Found**
+  ```json
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "No se encontró el dispositivo especificado."
+    }
+  }
+  ```

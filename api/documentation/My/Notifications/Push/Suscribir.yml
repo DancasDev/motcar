@@ -1,0 +1,82 @@
+info:
+  name: Suscribir
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/my/notifications/push/subscribe"
+  body:
+    type: json
+    data: |-
+      {
+        "device_token": "fcm_token_ejemplo_abc123...",
+        "platform": "1",
+        "device_name": "Pixel 8 Pro",
+        "app_version": "1.0.0"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([200, 201].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("device_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Suscribir Dispositivo Push (FCM)
+
+  Registra o actualiza el token FCM de un dispositivo del usuario para recibir notificaciones push.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications/push/subscribe`
+  - **Método**: `POST`
+  - **Filtros**: `auth:only_user`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `device_token` | `string` | Obligatorio. | Token del dispositivo FCM.
+  `platform` | `string` | Obligatorio: `0` (Web), `1` (Android), `2` (iOS). | Plataforma del dispositivo.
+  `device_name` | `string` | Opcional. Máx: 100. | Nombre del dispositivo.
+  `app_version` | `string` | Opcional. Máx: 20. | Versión de la app cliente.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created**
+  ```json
+  {
+    "status": 201,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Dispositivo registrado para notificaciones push exitosamente."
+    }
+  }
+  ```
+
+  **❌ 400 Fail Validation**
+  ```json
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "device_token": "El campo device_token es obligatorio."
+    }
+  }
+  ```

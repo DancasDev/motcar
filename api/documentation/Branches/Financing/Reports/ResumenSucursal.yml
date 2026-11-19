@@ -1,0 +1,78 @@
+info:
+  name: Resumen Sucursal
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/reports/summary"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Resumen Financiero y Métricas Consolidadas de Sucursal
+
+  Entrega en tiempo real la consolidación financiera y operativa de todos los grupos SAM de la sucursal activa: total comprometido, total recaudado, saldo por cobrar, morosidad total, beneficios adjudicados y desglose individual por grupo.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/reports/summary`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups`
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo ni parámetros adicionales en query string. El identificador de la sucursal se extrae directamente del segmento de la URL.
+
+  ## ⚙️ Reglas de Negocio
+  1. Agrega métricas en una única consulta optimizada (Zero N+1) sobre todos los grupos y participantes activos de la sucursal.
+  2. El porcentaje de cobranza (`collection_percentage`) calcula la relación entre `total_collected` y `total_committed`, manejando de forma segura carteras sin emitir (`0.0%`).
+  3. Desglosa cada grupo SAM con su capacidad, cuotas recaudadas, participantes al día, morosos y adjudicados para graficar barras de progreso individuales.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "financial": {
+        "total_committed": 251460.0,
+        "total_collected": 134580.0,
+        "total_pending": 116880.0,
+        "total_overdue": 18240.0,
+        "collection_percentage": 53.52
+      },
+      "operational": {
+        "groups_total": 20,
+        "groups_active": 20,
+        "participants_total": 198,
+        "participants_max": 200,
+        "participants_up_to_date": 140,
+        "participants_overdue": 58,
+        "awarded_total": 48,
+        "pending_award_total": 150
+      },
+      "groups": [
+        {
+          "id": 1,
+          "name": "GRUPO A",
+          "status": "1",
+          "participant_count": 10,
+          "participant_max": 10,
+          "total_committed": 12860.0,
+          "total_collected": 6735.0,
+          "total_pending": 6125.0,
+          "total_overdue": 2700.0,
+          "collection_percentage": 52.37,
+          "overdue_participants": 3,
+          "awarded_count": 2
+        }
+      ]
+    }
+  }
+  ```

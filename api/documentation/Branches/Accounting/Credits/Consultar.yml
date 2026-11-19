@@ -1,0 +1,153 @@
+info:
+  name: Consultar
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/credits"
+  params:
+    - name: fields
+      value: "id,client_id,client_first_name,client_last_name,receipt_id,receipt_code,currency_id,currency_code,amount,available_amount,status,created_at"
+      type: query
+      disabled: false
+    - name: limit
+      value: "25"
+      type: query
+      disabled: true
+    - name: page
+      value: "1"
+      type: query
+      disabled: true
+    - name: sort
+      value: "-id"
+      type: query
+      disabled: true
+    - name: search
+      value: ""
+      type: query
+      disabled: true
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Saldos a Favor de Clientes
+  
+  Consulta la lista paginada de saldos a favor (créditos por sobrepago) pertenecientes a clientes de la sucursal, o los detalles de un saldo a favor en particular.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/credits` (Listado) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/credits/{{credit_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_client_credits`
+  - **Límite**: 25 registros por defecto (máximo 100 por página)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 🔍 Parámetros de Consulta (Query String)
+  
+  Parámetro | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  fields | string | Opcional. Lista separada por comas. | Campos específicos a recuperar.
+  limit | integer | Opcional. Rango: 1 - 100. Por defecto: 25. | Cantidad máxima de registros por página.
+  page | integer | Opcional. Mínimo: 1. Por defecto: 1. | Número de página a consultar.
+  sort | string | Opcional. Prefijo `-` para orden descendente. | Ordenamiento por campos permitidos (ej. `-id`, `available_amount`).
+  search | string | Opcional. Búsqueda textual. | Búsqueda textual en código de recibo origen o nombres del cliente.
+  
+  ## 📊 Tabla de Campos Disponibles (DQB)
+  
+  Campo | Tipo | Nivel de Acceso | Descripción
+  --- | --- | --- | ---
+  id | integer | Público | Identificador único del saldo a favor.
+  branch_id | integer | Público | Identificador de la sucursal emisora.
+  branch_name | string | Público | Nombre de la sucursal (`glb_branch.name`).
+  client_id | integer | Público | Identificador del cliente acreedor (`glb_person.id`).
+  client_first_name | string | Público | Nombres del cliente (`glb_person.first_name`).
+  client_last_name | string | Público | Apellidos del cliente (`glb_person.last_name`).
+  receipt_id | integer | Público | Recibo de cobro emisor que originó el excedente.
+  receipt_code | string | Público | Código correlativo del recibo origen (`acc_receipt.code`).
+  payment_account_id | integer | Público | Cuenta de pago original vinculada a la transacción.
+  payment_account_name | string | Público | Nombre de la cuenta de pago (`acc_payment_account.name`).
+  currency_id | integer | Público | Identificador de la moneda del crédito.
+  currency_code | string | Público | Código ISO o estándar de la moneda (`acc_currency.code`).
+  currency_symbol | string | Público | Símbolo monetario (`acc_currency.symbol`).
+  amount | number | Público | Monto nominal original del saldo a favor generado.
+  exchange_rate | number | Público | Tasa de cambio congelada al momento de la emisión.
+  available_amount | number | Público | Monto remanente disponible para ser aplicado en futuros recibos.
+  status | string | Público | Estado: `"0"` (Disponible), `"1"` (Consumido totalmente), `"2"` (Anulado).
+  created_at | string | Público | Fecha y hora de generación del crédito.
+  updated_at | string | Público | Fecha de última imputación o modificación.
+  deleted_at | string | Interno (Nivel 2) | Fecha de eliminación suave.
+  
+  ## ⚙️ Reglas de Negocio
+  1. Los saldos a favor no se crean manualmente por peticiones POST; se generan únicamente cuando un recibo de cobro es confirmado y el total de los pagos recibidos supera las deudas imputadas.
+  2. Su saldo disponible (`available_amount`) se reduce automáticamente cuando es aplicado como medio de pago (`origin_type = "1"`) en un nuevo recibo confirmado.
+  3. Los registros están estrictamente acotados a la sucursal activa (`branch_id`).
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado Paginado)**
+  ```JSON
+  {
+    "status": 200,
+    "total": 1,
+    "data": [
+      {
+        "id": 1,
+        "client_id": 1,
+        "client_first_name": "Juan",
+        "client_last_name": "Pérez",
+        "receipt_id": 10,
+        "receipt_code": "RECP-01-261005-A1B2C3",
+        "currency_id": 1,
+        "currency_code": "USD",
+        "amount": "20.00",
+        "available_amount": "20.00",
+        "status": "0",
+        "created_at": "2026-10-05 14:35:00"
+      }
+    ]
+  }
+  ```
+  
+  **✅ 200 OK (Consulta Unitaria - `.../credits/{{credit_id}}`)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "branch_id": 1,
+      "branch_name": "Sucursal Central",
+      "client_id": 1,
+      "client_first_name": "Juan",
+      "client_last_name": "Pérez",
+      "receipt_id": 10,
+      "receipt_code": "RECP-01-261005-A1B2C3",
+      "payment_account_id": 1,
+      "payment_account_name": "Cuenta Banesco USD",
+      "currency_id": 1,
+      "currency_code": "USD",
+      "currency_symbol": "$",
+      "amount": "20.00",
+      "exchange_rate": "1.00000000",
+      "available_amount": "20.00",
+      "status": "0",
+      "created_at": "2026-10-05 14:35:00",
+      "updated_at": "2026-10-05 14:35:00"
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Crédito no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "CREDIT_NOT_FOUND",
+    "message": "El saldo a favor especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```

@@ -1,0 +1,115 @@
+info:
+  name: Resumen
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/reports/summary"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Resumen Financiero y Matriz del Grupo SAM
+
+  Retorna el balance financiero consolidado (compromiso total, monto recaudado, saldo por cobrar y porcentaje de avance) junto con la matriz operativa de participantes del grupo SAM.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/reports/summary`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups`
+  - **Límite**: no aplica
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo. La sucursal (`branch_id`) y el grupo (`group_id`) se transmiten en la URL.
+
+  ## ⚙️ Reglas de Negocio
+  1. El compromiso total del grupo se calcula sumando los compromisos individuales de cada participante (`installment_count * installment_amount`), soportando grupos de cualquier tamaño y cuotas personalizadas.
+  2. El monto recaudado refleja los pagos reales asentados en la cartera (`acc_receivable`) y los recibos de apertura vinculados.
+  3. Desglosa cada posición con los datos del cliente, contacto de referencia (quien lo refirió con $15), cuotas pagadas/pendientes y vehículo asignado en caso de adjudicación.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "group": {
+        "id": 1,
+        "name": "GRUPO A",
+        "status": "1",
+        "frequency_base_date": "2025-06-30",
+        "participant_max": 10,
+        "participant_count": 10,
+        "default_installment_amount": 55.0,
+        "default_installment_count": 22
+      },
+      "financial": {
+        "total_committed": 12860.54,
+        "total_collected": 7140.0,
+        "total_pending": 5720.54,
+        "collection_percentage": 55.52
+      },
+      "operational": {
+        "participants_total": 10,
+        "participants_max": 10,
+        "participants_up_to_date": 9,
+        "participants_overdue": 1,
+        "awarded_count": 0,
+        "pending_award_count": 10
+      },
+      "participants": [
+        {
+          "id": 1,
+          "position": 1,
+          "status": "1",
+          "is_overdue": false,
+          "is_awarded": false,
+          "awarded_at": null,
+          "benefit_metadata": null,
+          "client": {
+            "id": 12,
+            "name": "Antony Gonto",
+            "identification_type": "0",
+            "identification_value": "V12345678",
+            "phone": "04141234567"
+          },
+          "referrer": {
+            "id": 2,
+            "name": "Valery Motcar",
+            "phone": "0414-0000000"
+          },
+          "financial": {
+            "installment_amount": 57.73,
+            "installment_count": 22,
+            "total_committed": 1270.06,
+            "total_collected": 635.0,
+            "total_pending": 635.06,
+            "paid_installments": 10,
+            "total_installments": 22,
+            "overdue_installments": 0,
+            "overdue_amount": 0.0
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+  **❌ 404 Not Found**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "Registro no encontrado"
+    }
+  }
+  ```

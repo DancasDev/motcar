@@ -1,0 +1,37 @@
+info:
+  name: Esquema
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/schema"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Esquema Consolidado (UI)
+
+  Entrega en un solo payload optimizado con caché la jerarquía de grupos y campos activos del esquema para renderizar formularios dinámicos en frontend.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/schema`
+  - **Método**: `GET`
+  - **Filtros**: `auth`
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "data": {
+      "groups": {},
+      "fields": {}
+    }
+  }
+  ```

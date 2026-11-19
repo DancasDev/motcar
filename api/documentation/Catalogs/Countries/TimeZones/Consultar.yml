@@ -1,0 +1,73 @@
+info:
+  name: Consultar
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/catalogs/countries/{{country_id}}/timezones"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Zonas Horarias de un País
+
+  Lista las zonas horarias asociadas a un país (solo lectura). El `country_id` es implícito de la URL.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/catalogs/countries/{{country_id}}/timezones` (Lista) o `{{base_url}}/v1/catalogs/countries/{{country_id}}/timezones/{{time_zone_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth` (compartido: usuario o cliente autenticado).
+  - **Límite**: por defecto
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Ruta (Path Params)
+  Nombre | Tipo | Descripción
+  --- | --- | ---
+  `country_id` | `integer` | ID del país.
+
+  ### Parámetros de Consulta (Query Params)
+  `fields`, `filters`, `order`, `page`, `itemsPerPage` (sintaxis del motor de consultas).
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID de la relación país-zona horaria.
+  time_zone_id | 0 | L, F, O | ID de la zona horaria.
+  time_zone_code | 0 | L, F, O | Código IANA de la zona horaria.
+  is_default | 0 | L, F, O | Indica si es la zona por defecto del país (0/1).
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## ⚙️ Reglas de Negocio
+  1. **Solo lectura.**
+  2. El identificador del país queda delimitado por la ruta de la petición.
+  3. Si el país no tiene zonas horarias, la respuesta es un listado vacío (200).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Lista)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": "1",
+        "country_id": "1",
+        "country_code": "es",
+        "time_zone_id": "1",
+        "time_zone_code": "Europe/Madrid",
+        "is_default": "1"
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```

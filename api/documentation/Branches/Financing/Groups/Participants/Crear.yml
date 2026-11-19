@@ -1,0 +1,176 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants"
+  body:
+    type: json
+    data: |-
+      {
+        "client_id": 1,
+        "referrer_id": 2,
+        "position": 1,
+        "status": "1",
+        "benefit_metadata": {
+          "vehicle_model": "EK-Express 150cc",
+          "color": "Rojo",
+          "chassis": "8X1234567890ABCD"
+        },
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("participant_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Inscribir Participante en Grupo SAM
+  
+  Registra la incorporación o suscripción de un cliente en un grupo SAM específico de la sucursal.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_participants,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  client_id | integer | Requerido. ID de persona activa y existente. | Cliente o suscriptor titular del cupo SAM.
+  referrer_id | integer | Opcional. ID de persona activa y existente. | Persona de referencia del suscriptor ($15 de comisión).
+  position | integer | Opcional. Entre 1 y 99. Único por grupo. | Número asignado o turno de posición en el grupo.
+  frequency_id | integer | Opcional. ID de frecuencia activa. | Periodicidad personalizada (si anula la del grupo).
+  frequency_base_date | string | Opcional. Fecha válida (YYYY-MM-DD). | Fecha base personalizada de vencimientos.
+  installment_amount | decimal | Opcional. Decimal mayor a 0. | Cuota personalizada (si anula la del grupo).
+  installment_count | integer | Opcional. Entre 1 y 99. | Total de cuotas acordadas.
+  status | string | Opcional. Valores: "0" (En espera), "1" (Activo), "2" (Retirado), "3" (Culminado). | Estado del participante en el grupo.
+  is_overdue | string | Opcional. Valores: "0", "1". | Indicador de morosidad (0: al día, 1: en mora).
+  awarded_at | string | Opcional. Fecha válida (YYYY-MM-DD). | Fecha en la que fue adjudicado el bien.
+  benefit_metadata | object | Opcional. Estructura JSON según el tipo de contrato. | Metadatos y características del vehículo financiado.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  > `branch_id` y `san_group_id` se asocian de forma automática a partir de los parámetros de la URL.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "client_id": 1,
+    "referrer_id": 2,
+    "position": 1,
+    "status": "1",
+    "benefit_metadata": {
+      "vehicle_model": "EK-Express 150cc",
+      "color": "Rojo"
+    },
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../participants?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "client_id": 1,
+      "position": 1,
+      "status": "1"
+    },
+    {
+      "client_id": 2,
+      "position": 2,
+      "status": "1"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Si la posición (`position`) se especifica, no puede estar ocupada por otro integrante del mismo grupo SAM.
+  2. Si el grupo ya alcanzó la capacidad máxima permitida de integrantes (`participant_max`), la solicitud se rechaza con `400 GROUP_MAX_PARTICIPANTS_REACHED`.
+  3. Al registrar exitosamente suscriptores, el sistema actualiza de inmediato el contador real `participant_count` del grupo SAM.
+  4. Si el tipo de contrato del grupo cuenta con un esquema de metadatos asociado, el campo `benefit_metadata` es validado rigurosamente contra ese esquema.
+  5. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "position": "La posición indicada ya está ocupada en este grupo."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Cupo Máximo Alcanzado**
+  ```JSON
+  {
+    "status": 400,
+    "error": "GROUP_MAX_PARTICIPANTS_REACHED",
+    "messages": {
+      "san_group_id": "El grupo ha alcanzado el número máximo de participantes permitidos."
+    }
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "client_id": "El cliente seleccionado no es válido."
+    }
+  }
+  ```

@@ -1,0 +1,100 @@
+info:
+  name: Eliminar
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields/{{field_id}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Eliminar Campo Dinámico
+
+  Mueve uno o varios campos a la papelera (soft delete) o los elimina permanentemente con el header `In-Trash: true`.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields/{{field_id}}` (Individual) o `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields` (Masivo)
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:module_code=sys_metadata,only_user`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  **Ejemplo Masivo (vía `/v1/system/metadata/{{metadata_schema_id}}/fields`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    }
+  ]
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. **Soft delete:** registra `deleted_at`; el campo deja de ser compilado en el esquema activo.
+  2. **Eliminación masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  3. Cada eliminación exitosa purga la caché consolidada del esquema (`purgeCache`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Eliminado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro eliminado exitosamente."
+    }
+  }
+  ```
+
+  **✅ 200 OK (No existía / no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro eliminado exitosamente."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```

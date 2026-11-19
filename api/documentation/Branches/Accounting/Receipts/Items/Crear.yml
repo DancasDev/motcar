@@ -1,0 +1,150 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items"
+  body:
+    type: json
+    data: |-
+      {
+        "receivable_id": 1
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("receipt_item_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Renglón de Recibo (Obligación a Cobrar)
+  
+  Vincula una cuenta por cobrar (cuota o cargo administrativo pendiente) a un recibo en estado borrador para ser amortizada al momento de la confirmación.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  receivable_id | integer | Requerido. Clave foránea válida y activa. | Identificador de la cuenta por cobrar a imputar.
+  
+  > **Nota sobre Importe y Tipo:** los campos `amount` (monto a pagar) y `type` (1=completo, 2=abono, 3=restante) no se envían en la creación; son calculados y asignados automáticamente por el algoritmo de cascada FIFO al confirmar el recibo (`PUT status: "1"`).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "receivable_id": 1
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../items?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "receivable_id": 1
+    },
+    {
+      "receivable_id": 2
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Estado Borrador Requerido:** El recibo padre debe encontrarse estrictamente en estado Borrador (`status = "0"`). De lo contrario, se deniega con error `409 RECEIPT_NOT_DRAFT`.
+  2. **Coincidencia de Cliente y Sucursal:** La cuenta por cobrar (`receivable_id`) debe pertenecer obligatoriamente a la misma sucursal y al mismo cliente titular del recibo. Si difiere, retorna `400 RECEIVABLE_CLIENT_MISMATCH`.
+  3. **Estado Cobrable:** La cuenta por cobrar debe encontrarse en estado pendiente (`"0"`) o parcial (`"1"`). Si ya está pagada o anulada, retorna `400 RECEIVABLE_NOT_PAYABLE`.
+  4. **Clave Compuesta Única:** No se permite agregar dos veces la misma cuenta por cobrar dentro del mismo recibo (`[receipt_id, receivable_id]`).
+  5. **Creación Masiva:** Activa con el parámetro `?is_batch=true` enviando una lista de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **⚠️ 207 Multi-Status (Creación Masiva Mixta)**
+  ```JSON
+  {
+    "status": 207,
+    "total": 2,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "RECEIVABLE_CLIENT_MISMATCH",
+        "messages": {
+          "receivable_id": "La cuenta por cobrar no pertenece al cliente o a la sucursal del recibo."
+        }
+      }
+    ]
+  }
+  ```
+  
+  **❌ 400 Bad Request (Obligación ya vinculada o no pagable)**
+  ```JSON
+  {
+    "status": 400,
+    "error": "RECEIVABLE_NOT_PAYABLE",
+    "messages": {
+      "receivable_id": "La cuenta por cobrar ya no se encuentra en estado cobrable."
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```
+  
+  **❌ 409 Conflict (Recibo no es borrador)**
+  ```JSON
+  {
+    "status": 409,
+    "error": "RECEIPT_NOT_DRAFT",
+    "message": "Solo es posible modificar recibos en estado borrador."
+  }
+  ```

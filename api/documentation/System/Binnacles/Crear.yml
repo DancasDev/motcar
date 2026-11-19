@@ -1,0 +1,99 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/binnacles"
+  body:
+    type: json
+    data: |-
+      {
+        "to_entity_type": "gac_role",
+        "action": "create",
+        "data": {}
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("binnacle_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Bitácora
+
+  Registra un evento o acción en la bitácora de auditoría del sistema.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/binnacles`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=sys_binnacles`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `to_entity_type` | `string` | Requerido. Máx: 100. Solo minúsculas y guion bajo (`^[a-z0-9]+(_[a-z0-9]+)*$`). | Nombre o identificador del recurso afectado (ej: `roles`, `users`, `branches`).
+  `to_entity_id` | `string` | Opcional. Máx: 100. | ID de la entidad destino.
+  `action` | `string` | Requerido. Máx: 50. Mismo formato alfanumérico con guion bajo. | Acción registrada (ej: `create`, `update`, `delete`, `login`).
+  `date` | `string` | Opcional. Formato `YYYY-MM-DD HH:MM:SS`. | Fecha; por defecto la actual.
+  `ip` | `string` | Opcional. Máx: 45. | Dirección IP.
+  `data` | `array` | Opcional. `permit_empty\|is_array`. | Datos adicionales del evento (objeto o arreglo asociativo JSON).
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "to_entity_type": "gac_role",
+    "to_entity_id": "10",
+    "action": "update",
+    "data": {
+      "field": "name"
+    }
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. Los campos de procedencia del evento son administrados automáticamente por el sistema; no es necesario enviarlos.
+  2. `to_entity_type` y `action` deben cumplir el formato `^[a-z0-9]+(_[a-z0-9]+)*$` (sin espacios, guiones ni mayúsculas).
+  3. `data` debe ser un **string** (JSON serializado); enviar un objeto/arreglo directo se rechaza.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 200
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+
+  **❌ 400 Validación**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "action": "El campo debe contener un valor previamente existente en la base de datos."
+    }
+  }
+  ```

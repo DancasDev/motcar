@@ -1,0 +1,177 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables"
+  body:
+    type: json
+    data: |-
+      {
+        "client_id": 1,
+        "receivable_concept_id": 1,
+        "description": "Cuota #01 de 24 - GRUPO SAM EK-EXPRESS #01",
+        "origin_type": "0",
+        "origin_id": 1,
+        "total_amount": 50.00,
+        "paid_amount": 0.00,
+        "issue_date": "2026-10-05",
+        "due_date": "2026-10-15",
+        "status": "0",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("receivable_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Cuenta por Cobrar
+  
+  Registra una nueva cuenta por cobrar u obligación financiera para un cliente en la sucursal.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receivables,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  client_id | integer | Requerido. ID de persona activa y existente. | Cliente titular de la obligación de pago.
+  receivable_concept_id | integer | Requerido. ID de concepto de cobro activo. | Clasificación del cobro (cuota periódica, inscripción, etc.).
+  description | string | Requerido. Máx: 150. | Glosa o descripción explicativa de la obligación.
+  origin_type | string | Requerido. Valor: "0". | Origen del cobro ("0" = Participante SAM).
+  origin_id | integer | Requerido. ID natural > 0. | Identificador del registro originador.
+  total_amount | decimal | Requerido. Mayor a 0. | Monto total nominal a cobrar.
+  paid_amount | decimal | Opcional. Por defecto 0.00. | Monto total abonado acumulado.
+  issue_date | string | Requerido. Fecha válida (YYYY-MM-DD). | Fecha en la que se generó o emitió la deuda.
+  due_date | string | Requerido. Fecha válida (YYYY-MM-DD). | Fecha límite de vencimiento de pago.
+  status | string | Opcional. Valores: "0" (Pendiente), "1" (Abonado), "2" (Pagado), "3" (Anulado). | Estado de la cuenta por cobrar.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  > `branch_id` se vincula automáticamente desde el parámetro `{{branch_id}}` de la URL.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "client_id": 1,
+    "receivable_concept_id": 1,
+    "description": "Cuota #01 de 24 - GRUPO SAM EK-EXPRESS #01",
+    "origin_type": "0",
+    "origin_id": 1,
+    "total_amount": 50.00,
+    "paid_amount": 0.00,
+    "issue_date": "2026-10-05",
+    "due_date": "2026-10-15",
+    "status": "0",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../receivables?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "client_id": 1,
+      "receivable_concept_id": 1,
+      "description": "Cuota #01 de 24 - GRUPO SAM EK-EXPRESS #01",
+      "origin_type": "0",
+      "origin_id": 1,
+      "total_amount": 50.00,
+      "issue_date": "2026-10-05",
+      "due_date": "2026-10-15",
+      "status": "0"
+    },
+    {
+      "client_id": 1,
+      "receivable_concept_id": 1,
+      "description": "Cuota #02 de 24 - GRUPO SAM EK-EXPRESS #01",
+      "origin_type": "0",
+      "origin_id": 1,
+      "total_amount": 50.00,
+      "issue_date": "2026-10-05",
+      "due_date": "2026-11-15",
+      "status": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El cliente y el concepto de cobro deben existir en el sistema y no encontrarse inhabilitados ni eliminados.
+  2. La cuenta por cobrar queda asignada estrictamente a la sucursal operadora de la URL (`{{branch_id}}`).
+  3. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "total_amount": "El campo debe ser un número decimal mayor a cero."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "total_amount": "El campo debe ser un número decimal mayor a cero."
+    }
+  }
+  ```

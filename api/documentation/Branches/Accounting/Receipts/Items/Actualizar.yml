@@ -1,0 +1,118 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items/{{receipt_item_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "receivable_id": 2
+      }
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Renglón de Recibo
+  
+  Modifica la cuenta por cobrar asignada a un renglón de un recibo en estado borrador.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items/{{receipt_item_id}}` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  id | integer | Requerido en masivo. | Identificador del renglón a actualizar.
+  receivable_id | integer | Requerido si se modifica. Clave válida. | Nueva cuenta por cobrar a asociar.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "receivable_id": 2
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../items`):**
+  ```JSON
+  [
+    {
+      "id": 1,
+      "receivable_id": 2
+    },
+    {
+      "id": 2,
+      "receivable_id": 3
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Estado Borrador Requerido:** El recibo padre debe encontrarse en estado Borrador (`status = "0"`). De lo contrario, se deniega con error `409 RECEIPT_NOT_DRAFT`.
+  2. **Validación de la Nueva Obligación:** La nueva cuenta por cobrar debe ser cobrable (`status = 0 o 1`), pertenecer a la misma sucursal y al mismo cliente titular, y no estar repetida en el recibo.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Actualización Exitosa Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "affected": 1
+  }
+  ```
+  
+  **⚠️ 207 Multi-Status (Actualización Masiva Mixta)**
+  ```JSON
+  {
+    "status": 207,
+    "total": 2,
+    "data": [
+      {
+        "status": 200,
+        "affected": 1
+      },
+      {
+        "status": 400,
+        "error": "RECEIVABLE_CLIENT_MISMATCH",
+        "messages": {
+          "receivable_id": "La cuenta por cobrar no pertenece al cliente o a la sucursal del recibo."
+        }
+      }
+    ]
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo o Renglón no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```
+  
+  **❌ 409 Conflict (Recibo no es borrador)**
+  ```JSON
+  {
+    "status": 409,
+    "error": "RECEIPT_NOT_DRAFT",
+    "message": "Solo es posible modificar recibos en estado borrador."
+  }
+  ```

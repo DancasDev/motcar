@@ -1,0 +1,145 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts"
+  params:
+    - name: fields
+      value: "id,code,date,client_id,client_first_name,client_last_name,collector_id,collector_first_name,collector_last_name,status,created_at"
+      type: query
+      disabled: false
+    - name: limit
+      value: "25"
+      type: query
+      disabled: true
+    - name: page
+      value: "1"
+      type: query
+      disabled: true
+    - name: sort
+      value: "-id"
+      type: query
+      disabled: true
+    - name: search
+      value: ""
+      type: query
+      disabled: true
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Recibos de Cobro
+  
+  Consulta la lista paginada de recibos de cobro de la sucursal o los datos de un recibo específico mediante su identificador.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts` (Listado) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts`
+  - **Límite**: 25 registros por defecto (máximo 100 por página)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 🔍 Parámetros de Consulta (Query String)
+  
+  Parámetro | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  fields | string | Opcional. Lista separada por comas. | Campos específicos a recuperar.
+  limit | integer | Opcional. Rango: 1 - 100. Por defecto: 25. | Cantidad máxima de registros por página.
+  page | integer | Opcional. Mínimo: 1. Por defecto: 1. | Número de página a consultar.
+  sort | string | Opcional. Prefijo `-` para orden descendente. | Ordenamiento por campos permitidos (ej. `-id`, `date`).
+  search | string | Opcional. Búsqueda textual. | Búsqueda global en columnas filtrables (`code`, nombres).
+  
+  ## 📊 Tabla de Campos Disponibles (DQB)
+  
+  Campo | Tipo | Nivel de Acceso | Descripción
+  --- | --- | --- | ---
+  id | integer | Público | Identificador único del recibo.
+  branch_id | integer | Público | Identificador de la sucursal emisora.
+  branch_name | string | Público | Nombre de la sucursal (`glb_branch.name`).
+  client_id | integer | Público | Identificador de la persona titular (`glb_person.id`).
+  client_first_name | string | Público | Nombres del cliente (`glb_person.first_name`).
+  client_last_name | string | Público | Apellidos del cliente (`glb_person.last_name`).
+  collector_id | integer | Público | Identificador del usuario cajero (`gac_user.id`).
+  collector_first_name | string | Público | Nombres del cajero (`gac_user.first_name`).
+  collector_last_name | string | Público | Apellidos del cajero (`gac_user.last_name`).
+  code | string | Público | Código institucional único del recibo.
+  date | string | Público | Fecha contable de emisión (YYYY-MM-DD).
+  notes | string | Público | Observaciones o notas adicionales.
+  cancellation_reason | string | Público | Motivo de anulación (si fue anulado).
+  status | string | Público | Estado: `"0"` (Borrador), `"1"` (Confirmado), `"2"` (Anulado).
+  created_at | string | Público | Fecha de creación del registro.
+  updated_at | string | Público | Fecha de última modificación.
+  deleted_at | string | Interno (Nivel 2) | Fecha de eliminación suave.
+  
+  ## ⚙️ Reglas de Negocio
+  1. El listado está estrictamente acotado a la sucursal de la URL (`branch_id`).
+  2. Para obtener el detalle completo con los renglones imputados (`items`), medios de pago (`payments`), créditos aplicados y sumarias consolidadas en USD, use el endpoint dedicado `GET (:num)/detail`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado Paginado)**
+  ```JSON
+  {
+    "status": 200,
+    "total": 1,
+    "data": [
+      {
+        "id": 1,
+        "code": "RECP-01-261005-A1B2C3",
+        "date": "2026-10-05",
+        "client_id": 1,
+        "client_first_name": "Juan",
+        "client_last_name": "Pérez",
+        "collector_id": 1,
+        "collector_first_name": "Admin",
+        "collector_last_name": "Sistema",
+        "status": "0",
+        "created_at": "2026-10-05 14:30:00"
+      }
+    ]
+  }
+  ```
+  
+  **✅ 200 OK (Consulta Unitaria - `.../receipts/{{receipt_id}}`)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "branch_id": 1,
+      "branch_name": "Sucursal Central",
+      "client_id": 1,
+      "client_first_name": "Juan",
+      "client_last_name": "Pérez",
+      "collector_id": 1,
+      "collector_first_name": "Admin",
+      "collector_last_name": "Sistema",
+      "code": "RECP-01-261005-A1B2C3",
+      "date": "2026-10-05",
+      "notes": "Recibo de recaudación de cuotas correspondiente al mes en curso.",
+      "cancellation_reason": null,
+      "status": "0",
+      "created_at": "2026-10-05 14:30:00",
+      "updated_at": "2026-10-05 14:30:00"
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```

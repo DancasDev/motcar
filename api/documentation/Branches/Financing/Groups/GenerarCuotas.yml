@@ -1,0 +1,87 @@
+info:
+  name: GenerarCuotas
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/generate-receivables"
+  body:
+    type: json
+    data: |-
+      {
+        "participant_id": null
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Generar Cuotas de Cobro para Grupo SAM
+  
+  Genera de forma masiva o individual el cronograma de cuentas por cobrar (cuotas periódicas) para los participantes activos de un grupo SAM.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/generate-receivables`
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups,only_user`
+  - **Límite**: no aplica
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body / Parámetros
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  participant_id | integer | Opcional. ID de participante del grupo. | Si se suministra, genera cuotas únicamente para este participante. Si se omite, genera para todos los participantes activos.
+  
+  **Ejemplo:**
+  ```JSON
+  {
+    "participant_id": null
+  }
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Si un participante ya cuenta con cuotas previas pagadas o con abonos parciales, estas se conservan intactas. Las cuotas pendientes sin abonos se regeneran según el nuevo cálculo.
+  2. Tras la generación masiva, el sistema sincroniza automáticamente el estado de morosidad (`is_overdue`) de los participantes afectados.
+  3. Si el grupo no tiene participantes activos con estado activo (`status = 1`), responde `400 NO_ACTIVE_PARTICIPANTS`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "group_id": 1,
+      "participants": 24,
+      "installments": 24,
+      "generated": 576
+    }
+  }
+  ```
+  
+  **❌ 400 No Hay Participantes Activos**
+  ```JSON
+  {
+    "status": 400,
+    "error": "NO_ACTIVE_PARTICIPANTS",
+    "message": "El grupo no cuenta con participantes activos"
+  }
+  ```
+  
+  **❌ 404 Grupo No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "GROUP_NOT_FOUND",
+    "message": "Grupo SAM no encontrado"
+  }
+  ```

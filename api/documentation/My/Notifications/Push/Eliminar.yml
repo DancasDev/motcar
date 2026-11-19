@@ -1,0 +1,52 @@
+info:
+  name: Eliminar
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/my/notifications/push/devices/{{device_id}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Eliminar Dispositivo Push
+
+  Elimina el registro de un dispositivo push del usuario autenticado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications/push/devices/{{device_id}}`
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:only_user`
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Eliminado)**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Dispositivo eliminado de la lista para notificaciones push."
+    }
+  }
+  ```
+
+  **❌ 404 Record Not Found**
+  ```json
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "No se encontró el dispositivo especificado."
+    }
+  }
+  ```

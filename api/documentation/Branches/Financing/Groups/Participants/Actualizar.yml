@@ -1,0 +1,151 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "status": "1",
+        "awarded_at": "2026-10-05"
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Participante de Grupo SAM
+  
+  Modifica la ficha, estado o condiciones particulares de uno o varios participantes del grupo SAM.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_participants,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  referrer_id | integer | Opcional. ID de persona activa. | Persona de referencia asignada ($15 de comisión).
+  frequency_id | integer | Opcional. ID de frecuencia activa. | Periodicidad personalizada de cuotas.
+  position | integer | Opcional. Entre 1 y 99. Único en el grupo. | Turno o posición en el grupo.
+  frequency_base_date | string | Opcional. Fecha válida (YYYY-MM-DD). | Fecha base personalizada.
+  installment_amount | decimal | Opcional. Decimal mayor a 0. | Monto fijado por cuota.
+  installment_count | integer | Opcional. Entre 1 y 99. | Total de cuotas acordadas.
+  status | string | Opcional. Valores: "0" (En espera), "1" (Activo), "2" (Retirado), "3" (Culminado). | Estado del participante.
+  is_overdue | string | Opcional. Valores: "0", "1". | Indicador de mora.
+  awarded_at | string | Opcional. Fecha válida (YYYY-MM-DD) o null. | Fecha de adjudicación del bien.
+  benefit_metadata | object | Opcional. Sujeto al esquema de metadatos. | Características del vehículo / bien.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "status": "1",
+    "awarded_at": "2026-10-05"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../participants`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1,
+      "status": "1"
+    },
+    {
+      "id": 2,
+      "status": "1"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Si un participante pasa de estado "Retirado" (`2`) a un estado activo o en espera (`0`, `1`, `3`), se comprueba que el grupo no supere su capacidad máxima (`participant_max`). Si se excede → `400 GROUP_MAX_PARTICIPANTS_REACHED`.
+  2. La modificación sincroniza atómicamente el total de participantes vigentes (`participant_count`) en el grupo SAM.
+  3. **Actualización parcial:** solo se modifican los campos enviados en el cuerpo de la petición.
+  4. **Actualización masiva:** se habilita cuando no se envía identificador en la URL; cada objeto en el array debe incluir su `id`.
+  5. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "position": "La posición indicada ya está ocupada en este grupo."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "status": "El estado indicado no es válido."
+    }
+  }
+  ```

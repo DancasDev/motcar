@@ -1,0 +1,64 @@
+info:
+  name: PDF
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/pdf"
+  params:
+    - name: template
+      value: formal
+      type: query
+      disabled: true
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Generar PDF del Recibo de Cobro
+  
+  Genera y retorna la representación imprimible en documento PDF (Formato Carta) del comprobante de cobro, estructurada a partir del detalle financiero consolidado del recibo.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/pdf`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts`
+  - **Límite**: no aplica (descarga binaria de documento)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 🔍 Parámetros de Consulta (Query String)
+  
+  Parámetro | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  template | string | Opcional. Por defecto `formal`. | Plantilla de diseño a renderizar (`formal`, `pos`, etc.).
+  
+  ## ⚙️ Reglas de Negocio
+  1. Utiliza el motor `ReceiptRenderer` y reutiliza el caché de alto rendimiento de `getDetailByCache` para no sobrecargar el servidor en reimpresiones masivas.
+  2. Si el recibo no existe en la sucursal indicada, retorna un error en formato JSON con código HTTP `404`.
+  3. El archivo es emitido con cabecera `Content-Type: application/pdf` y visualización `inline; filename="RECP-...pdf"`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Documento Binario)**
+  ```
+  Content-Type: application/pdf
+  Content-Disposition: inline; filename="RECP-01-261005-A1B2C3.pdf"
+  
+  [Binary PDF stream / Formato Carta]
+  ```
+  
+  **❌ 404 Not Found (Recibo no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```

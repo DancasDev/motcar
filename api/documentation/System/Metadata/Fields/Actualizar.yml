@@ -1,0 +1,141 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields/{{field_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "attribute_values": {
+          "label": { "es": "Documento Nacional", "en": "National ID" }
+        },
+        "position": 2
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Campo Dinámico
+
+  Modifica la configuración de atributos, reglas o posición de uno o varios campos dinámicos existentes.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields/{{field_id}}` (Individual) o `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=sys_metadata,only_user`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  metadata_schema_group_id | integer | Opcional. ID de grupo del mismo esquema. | Nuevo grupo visual contenedor.
+  attribute_values | object | Opcional. Validado según el tipo de campo. | Nuevos valores de atributos.
+  rules | array | Opcional. Validado según el tipo de campo. | Nuevas reglas dinámicas.
+  position | integer | Opcional. Menor o igual a 99. | Orden de visualización.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "attribute_values": {
+      "label": { "es": "Documento Nacional", "en": "National ID" }
+    },
+    "position": 2
+  }
+  ```
+
+  **Ejemplo Masivo (vía `/v1/system/metadata/{{metadata_schema_id}}/fields`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1,
+      "position": 2
+    },
+    {
+      "id": 2,
+      "position": 1
+    }
+  ]
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. `code` y `metadata_field_type_id` son inmutables una vez que existen valores registrados en la base de datos para la entidad correspondiente.
+  2. `metadata_schema_id` es inmutable; se mantiene asociado al esquema contenedor.
+  3. **Actualización masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  4. Cada actualización exitosa purga la caché consolidada del esquema (`purgeCache`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "position": "El campo position debe ser menor o igual a 99."
+    }
+  }
+  ```

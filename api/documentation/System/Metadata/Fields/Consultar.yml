@@ -1,0 +1,127 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("field_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Campos Dinámicos
+
+  Lista o consulta la definición de campos dinámicos asociados a un esquema de metadatos.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields` (Lista) o `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields/{{field_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth`
+  - **Límite**: Por defecto (25 por página, máx 255)
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Ruta (Path Params)
+  Nombre | Tipo | Descripción
+  --- | --- | ---
+  `metadata_schema_id` | `integer` | ID del esquema de metadatos contenedor.
+  `field_id` | `integer` | ID del campo individual (solo para consulta individual).
+
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas: `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID del campo de metadatos.
+  metadata_schema_id | 0 | L, F, O | ID del esquema de metadatos contenedor.
+  metadata_field_type_id | 0 | L, F, O | ID del tipo de dato del campo.
+  metadata_field_type_code | 0 | L, F, O | Código técnico del tipo de campo (JOIN).
+  metadata_schema_group_id | 0 | L, F, O | ID del grupo visual contenedor.
+  metadata_schema_group_code | 0 | L, F, O | Código técnico del grupo visual (JOIN).
+  code | 0 | L, F, O | Código identificador del campo.
+  attribute_values | 0 | L | Atributos configurados (JSON).
+  rules | 0 | L | Reglas de validación aplicadas (JSON).
+  position | 0 | L, F, O | Posición de ordenamiento.
+  is_disabled | 0 | L, F, O | Estado (0: activo, 1: inhabilitado).
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de actualización.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Listado)**
+  ```json
+  {
+    "status": 200,
+    "data": [
+      {
+        "id": 1,
+        "metadata_schema_id": 1,
+        "metadata_field_type_id": 1,
+        "metadata_field_type_code": "text",
+        "metadata_schema_group_id": 1,
+        "metadata_schema_group_code": "personal_info",
+        "code": "dni",
+        "attribute_values": {
+          "label": { "es": "Documento", "en": "ID" }
+        },
+        "rules": [],
+        "position": 1,
+        "is_disabled": "0",
+        "created_at": "2026-10-04 12:00:00",
+        "updated_at": "2026-10-04 12:00:00"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "itemsPerPage": 25,
+      "totalItems": 1
+    }
+  }
+  ```
+
+  **✅ 200 OK (Individual)**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "metadata_schema_id": 1,
+      "metadata_field_type_id": 1,
+      "metadata_field_type_code": "text",
+      "metadata_schema_group_id": 1,
+      "metadata_schema_group_code": "personal_info",
+      "code": "dni",
+      "attribute_values": {
+        "label": { "es": "Documento", "en": "ID" }
+      },
+      "rules": [],
+      "position": 1,
+      "is_disabled": "0",
+      "created_at": "2026-10-04 12:00:00",
+      "updated_at": "2026-10-04 12:00:00"
+    }
+  }
+  ```

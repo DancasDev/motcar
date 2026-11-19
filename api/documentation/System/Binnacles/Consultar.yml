@@ -1,0 +1,85 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/system/binnacles"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("binnacle_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Bitácoras
+
+  Lista las bitácoras del sistema o consulta una individual. Usa el motor de consultas.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/binnacles` (Lista) o `{{base_url}}/v1/system/binnacles/{{binnacle_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=sys_binnacles`
+  - **Límite**: 100
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  `fields`, `filters`, `order`, `page`, `itemsPerPage` (máx **100**). `groupBy`/`having` deshabilitados.
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID de la bitácora.
+  from_entity_type | 0 | L, F, O | Tipo de entidad origen.
+  from_entity_id | 0 | L, F, O | ID de la entidad origen.
+  to_entity_type | 0 | L, F, O | Tipo de entidad destino.
+  to_entity_id | 0 | L, F, O | ID de la entidad destino.
+  action | 0 | L, F, O | Acción ejecutada.
+  date | 0 | L, F, O | Fecha de la acción.
+  ip | 0 | L, F, O | Dirección IP.
+  data | 0 | L, F, O | Datos adicionales (JSON string).
+  session_id | 0 | L, F, O | ID de sesión.
+  description | 0 | L | **Calculado.** Descripción legible de la acción.
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## ⚙️ Reglas de Negocio
+  1. `description` es un campo calculado que humaniza la acción según `Accept-Language`.
+  2. El tope de `itemsPerPage` es 100.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Lista)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": "200",
+        "to_entity_type": "gac_role",
+        "to_entity_id": "10",
+        "action": "update",
+        "date": "2026-08-01 06:10:00",
+        "ip": "127.0.0.1",
+        "description": "El rol \"Gestor\" fue actualizado."
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```

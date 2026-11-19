@@ -1,0 +1,143 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts"
+  body:
+    type: json
+    data: |-
+      {
+        "client_id": 1,
+        "date": "2026-10-05",
+        "notes": "Recibo de recaudación de cuotas correspondiente al mes en curso."
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("receipt_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Recibo de Cobro (Borrador)
+  
+  Inicia un nuevo recibo de cobro o comprobante de caja en estado borrador para un cliente determinado de la sucursal.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  client_id | integer | Requerido. ID de persona activa y existente. | Cliente pagador titular del recibo.
+  date | string | Opcional. Fecha válida (YYYY-MM-DD). Por defecto fecha actual. | Fecha contable del comprobante.
+  notes | string | Opcional. Texto libre. | Notas u observaciones del cajero.
+  
+  > El sistema asigna automáticamente:
+  > - `branch_id`: sucursal activa de la URL.
+  > - `collector_id`: identificador del usuario cajero autenticado.
+  > - `status`: "0" (Borrador).
+  > - `code`: código correlativo institucional único (`RECP-{sucursal}-{fecha}-{token}`).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "client_id": 1,
+    "date": "2026-10-05",
+    "notes": "Recibo de recaudación de cuotas mensual."
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../receipts?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "client_id": 1,
+      "date": "2026-10-05"
+    },
+    {
+      "client_id": 2,
+      "date": "2026-10-05"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El cliente debe existir en el sistema y no encontrarse inhabilitado ni en papelera.
+  2. El recibo se crea exclusivamente en estado Borrador (`status = 0`). Antes de confirmarse, se le deben incorporar sus obligaciones (`items`) y medios de pago (`payments`).
+  3. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "client_id": "El cliente seleccionado no es válido."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "client_id": "El campo es obligatorio."
+    }
+  }
+  ```

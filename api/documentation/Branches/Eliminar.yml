@@ -1,0 +1,119 @@
+info:
+  name: Eliminar
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/branches/{{branch_id}}"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Eliminar Sucursal
+  
+  Mueve una o varias sucursales a la papelera (soft delete).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}` (Individual) o `{{base_url}}/v1/branches` (Masivo)
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:module_code=cmp_branches,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  
+  **Ejemplo Masivo (vía `/v1/branches`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 10
+    },
+    {
+      "id": 11
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Soft delete:** registra `deleted_at`; la sucursal y su subárbol dejan de estar disponibles como alcance.
+  2. **Eliminación permanente:** con `In-Trash: true` el borrado es físico. Solo se permite si la sucursal **no tiene hijas**; en caso contrario → `400 FAIL_VALIDATION` ("No se puede eliminar físicamente una sucursal que tiene sucursales hijas.").
+  3. **Eliminación masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Eliminado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 10,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro eliminado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (No existía / no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 10,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro eliminado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation (borrado físico con hijas)**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "parent_id": "No se puede eliminar físicamente una sucursal que tiene sucursales hijas."
+    }
+  }
+  ```

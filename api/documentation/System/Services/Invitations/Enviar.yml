@@ -1,0 +1,66 @@
+info:
+  name: Enviar
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/services/invitations"
+  body:
+    type: json
+    data: |-
+      {
+        "user_id": {{user_id}}
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Enviar Invitación a Usuario
+
+  Genera un token de acción `user_invitation` y envía un correo electrónico de bienvenida al usuario con el enlace para configurar su contraseña inicial.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/services/invitations` o `{{base_url}}/v1/system/services/invitations/{{user_id}}`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_users,only_user`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ```json
+  {
+    "user_id": 2
+  }
+  ```
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created**
+  ```json
+  {
+    "status": 201,
+    "data": {
+      "user_id": 2,
+      "expires_at": "2026-09-28 07:19:50"
+    },
+    "messages": {
+      "success": "Se ha enviado la invitación por correo electrónico al usuario."
+    }
+  }
+  ```
+
+  **❌ 404 No Encontrado**
+  ```json
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

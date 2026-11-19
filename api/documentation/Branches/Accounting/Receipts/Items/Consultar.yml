@@ -1,0 +1,128 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items"
+  params:
+    - name: fields
+      value: "id,receipt_id,receipt_code,receivable_id,receivable_description,amount,type,created_at"
+      type: query
+      disabled: false
+    - name: limit
+      value: "25"
+      type: query
+      disabled: true
+    - name: page
+      value: "1"
+      type: query
+      disabled: true
+    - name: sort
+      value: "id"
+      type: query
+      disabled: true
+    - name: search
+      value: ""
+      type: query
+      disabled: true
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Renglones de Recibo
+  
+  Consulta la lista de cuentas por cobrar imputadas o vinculadas a un recibo de cobro determinado, o los datos de un renglón específico por su identificador.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items` (Listado) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/items/{{receipt_item_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts`
+  - **Límite**: 25 registros por defecto (máximo 100 por página)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 🔍 Parámetros de Consulta (Query String)
+  
+  Parámetro | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  fields | string | Opcional. Lista separada por comas. | Campos específicos a recuperar.
+  limit | integer | Opcional. Rango: 1 - 100. Por defecto: 25. | Cantidad máxima de registros por página.
+  page | integer | Opcional. Mínimo: 1. Por defecto: 1. | Número de página a consultar.
+  sort | string | Opcional. Prefijo `-` para orden descendente. | Ordenamiento por campos permitidos (ej. `id`).
+  search | string | Opcional. Búsqueda textual. | Búsqueda textual en campos asociados (`receivable_description`).
+  
+  ## 📊 Tabla de Campos Disponibles (DQB)
+  
+  Campo | Tipo | Nivel de Acceso | Descripción
+  --- | --- | --- | ---
+  id | integer | Público | Identificador único del renglón.
+  receipt_id | integer | Público | Identificador del recibo cabecera.
+  receipt_code | string | Público | Código del recibo cabecera (`acc_receipt.code`).
+  receivable_id | integer | Público | Identificador de la cuenta por cobrar.
+  receivable_description | string | Público | Descripción de la obligación (`acc_receivable.description`).
+  amount | number | Público | Importe imputado o amortizado por este recibo.
+  type | string | Público | Tipo de pago: `"0"` (No definido/Borrador), `"1"` (Liquidación total), `"2"` (Abono parcial), `"3"` (Cancelación de restante).
+  created_at | string | Público | Fecha y hora de vinculación del renglón.
+  updated_at | string | Público | Fecha de última actualización.
+  deleted_at | string | Interno (Nivel 2) | Fecha de eliminación suave.
+  
+  ## ⚙️ Reglas de Negocio
+  1. La consulta exige que el recibo padre pertenezca a la sucursal de la URL y no se encuentre en papelera.
+  2. Los campos `amount` y `type` contienen su valor definitivo una vez que el recibo pasa al estado Confirmado (`status = 1`). En Borrador permanecen típicamente nulos o en 0.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado Paginado)**
+  ```JSON
+  {
+    "status": 200,
+    "total": 1,
+    "data": [
+      {
+        "id": 1,
+        "receipt_id": 1,
+        "receipt_code": "RECP-01-261005-A1B2C3",
+        "receivable_id": 1,
+        "receivable_description": "Cuota 1/24 - SAM Motos Grupo 01",
+        "amount": "80.00",
+        "type": "1",
+        "created_at": "2026-10-05 14:31:00"
+      }
+    ]
+  }
+  ```
+  
+  **✅ 200 OK (Consulta Unitaria - `.../items/{{receipt_item_id}}`)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "receipt_id": 1,
+      "receipt_code": "RECP-01-261005-A1B2C3",
+      "receivable_id": 1,
+      "receivable_description": "Cuota 1/24 - SAM Motos Grupo 01",
+      "amount": "80.00",
+      "type": "1",
+      "created_at": "2026-10-05 14:31:00",
+      "updated_at": "2026-10-05 14:35:00"
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo o Renglón no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```

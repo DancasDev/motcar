@@ -1,0 +1,146 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/access/clients/{{client_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Sistema Externo",
+        "description": "Desc",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Cliente
+  
+  Modifica uno o varios clientes existentes.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/clients/{{client_id}}` (Individual) o `{{base_url}}/v1/access/clients` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=acc_clients,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  name | string | Opcional. Máx: 60. Único. | Nuevo nombre.
+  description | string | Opcional. | Descripción.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  update_credentials | boolean | Opcional. `true` para regenerar credenciales. | Regenerar secret.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "name": "Sistema Externo",
+    "description": "Desc",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/access/clients`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 10,
+      "name": "Sistema Externo"
+    },
+    {
+      "id": 11,
+      "name": "Sistema Externo"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El nombre del cliente debe ser único en el sistema.
+  2. Para regenerar credenciales (`client_id` y `client_secret`), envíe `update_credentials: true` en el cuerpo. Esto revoca los tokens activos y entrega las nuevas credenciales en la respuesta.
+  3. **Actualización parcial:** solo se modifican los campos enviados en el cuerpo de la petición.
+  4. **Actualización masiva:** se habilita cuando no se envía identificador en la URL; cada objeto en el array debe incluir su `id`.
+  5. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 10,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 10,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "name": "El campo debe contener un valor único."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "name": "El campo es obligatorio."
+    }
+  }
+  ```

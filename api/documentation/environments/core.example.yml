@@ -1,0 +1,58 @@
+name: core
+variables:
+  - name: base_url
+    value: http://127.0.0.1:8080
+  - name: jwt_token
+    value: ""
+  - name: username
+    value: ""
+  - name: password
+    value: ""
+  - name: lang
+    value: es
+  - name: user_id
+    value: "1"
+  - name: role_id
+    value: "1"
+  - name: client_id
+    value: ""
+  - name: client_secret
+    value: ""
+  - name: module_id
+    value: "1"
+  - name: module_category_id
+    value: "1"
+  - name: permission_id
+    value: "1"
+  - name: restriction_id
+    value: ""
+  - name: role_entity_id
+    value: ""
+  - name: branch_id
+    value: ""
+  - name: country_id
+    value: "1"
+  - name: language_id
+    value: "1"
+  - name: time_zone_id
+    value: "1"
+  - name: document_type_id
+    value: "1"
+  - name: notification_type_id
+    value: "1"
+  - name: locker_id
+    value: "1"
+  - name: locker_key
+    value: images/users/profiles
+  - name: field_type_id
+    value: "1"
+  - name: rule_id
+    value: "1"
+  - name: verification_id
+    value: ""
+  - name: action_token
+    value: ""
+  - name: telegram_webhook_secret
+    value: ""
+  - name: binnacle_id
+    value: ""

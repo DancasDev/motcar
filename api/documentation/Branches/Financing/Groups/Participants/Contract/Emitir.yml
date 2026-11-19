@@ -1,0 +1,88 @@
+info:
+  name: Emitir
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/contract"
+  body:
+    type: json
+    data: |-
+      {}
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("contract_document_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Emitir Contrato de Participante
+  
+  Genera y formaliza la emisión oficial de un nuevo contrato para el participante del grupo SAM.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/contract`
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_contract_documents,only_user`
+  - **Límite**: no aplica
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  No requiere campos obligatorios en el cuerpo de la petición. El sistema asigna automáticamente el tipo de contrato del grupo, la fecha de emisión, el correlativo único y el estado inicial (Emitido / Pendiente de firma).
+  
+  ## ⚙️ Reglas de Negocio
+  1. El grupo SAM debe tener configurado un tipo de contrato válido (`contract_type_id`); de lo contrario responde `409 GROUP_WITHOUT_CONTRACT_TYPE`.
+  2. Si el participante posee estado "Retirado" (`2`) o "Culminado" (`3`), la emisión se rechaza con `409 PARTICIPANT_NOT_ELIGIBLE`.
+  3. Si el participante ya cuenta con un contrato activo o firmado, se rechaza la duplicidad con `409 CONTRACT_ALREADY_EXISTS`.
+  4. El correlativo oficial `code` se genera automáticamente bajo el formato institucional: `CNTR-{sucursal}-{fecha}-{token}`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **❌ 409 Contrato Ya Existente**
+  ```JSON
+  {
+    "status": 409,
+    "error": "CONTRACT_ALREADY_EXISTS",
+    "messages": {
+      "error": "El participante ya cuenta con un contrato activo o firmado."
+    }
+  }
+  ```
+  
+  **❌ 409 Sin Tipo de Contrato**
+  ```JSON
+  {
+    "status": 409,
+    "error": "GROUP_WITHOUT_CONTRACT_TYPE",
+    "messages": {
+      "error": "El grupo SAM no tiene un modelo de contrato asignado."
+    }
+  }
+  ```

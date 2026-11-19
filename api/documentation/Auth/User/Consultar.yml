@@ -1,0 +1,89 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/auth/user"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Sesión de Usuario
+
+  Devuelve la información de la sesión actual del usuario autenticado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/user`
+  - **Método**: `GET`
+  - **Filtros**: `auth:only_user,allow_forced=password_change;email_verification`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  Nombre | Tipo | Descripción
+  --- | --- | ---
+  `user` | `boolean` | (Opcional) `true` para incluir datos del perfil de usuario.
+  `role` | `boolean` | (Opcional) `true` para incluir roles asignados.
+  `permission` | `boolean` | (Opcional) `true` para incluir matriz de permisos calculados.
+  `branch` | `boolean` | (Opcional) `true` para incluir el mapa completo de sucursales del árbol.
+
+  > Por defecto, si no se envía ningún parámetro, se retornan todas las secciones (`user`, `role`, `permission`, `branch`).
+
+  ## ⚙️ Reglas de Negocio
+  1. **Exclusividad de autenticación:** este endpoint solo admite tokens emitidos para usuarios; el uso de tokens de cliente responde `401 AUTH_ONLY_USER`.
+  2. **Acciones forzadas permitidas:** usuarios con cambio forzado de contraseña o verificación de correo pendiente pueden consultar su sesión.
+  3. **Integridad:** el token debe ser válido y coincidir con la huella del dispositivo.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "user": {
+        "id": 1,
+        "username": "Admin123",
+        "email": "admin@example.com",
+        "first_name": "Admin",
+        "last_name": null
+      },
+      "role": [
+        {
+          "id": 1,
+          "name": "Administrador de sistema"
+        }
+      ],
+      "branch": {
+        "1": {
+          "parent_id": null,
+          "scope": "1",
+          "name": "Sede Central",
+          "is_disabled": false,
+          "deleted_at": null,
+          "children_count_all": 1,
+          "children_count_available": 1,
+          "is_inherited_disabled": false
+        }
+      }
+    }
+  }
+  ```
+
+  **❌ 401 Token Inválido o Requerido**
+  ```JSON
+  {
+    "status": 401,
+    "error": "AUTH_TOKEN_IS_REQUIRED",
+    "messages": {
+      "error": "Debes iniciar sesión para acceder a este recurso."
+    }
+  }
+  ```

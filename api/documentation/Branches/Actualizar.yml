@@ -1,0 +1,146 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/branches/{{branch_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Sucursal Sur",
+        "parent_id": 1,
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Sucursal
+  
+  Modifica una o varias sucursales existentes.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}` (Individual) o `{{base_url}}/v1/branches` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=cmp_branches,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  name | string | Opcional. Máx: 30. Único por rama (parent_id + name). | Nuevo nombre.
+  parent_id | integer | Opcional. Debe existir, estar activa y no ser un descendiente. | Nueva sucursal padre.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "name": "Sucursal Sur",
+    "parent_id": 1,
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/branches`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 10,
+      "name": "Sucursal Sur"
+    },
+    {
+      "id": 11,
+      "name": "Sucursal Oeste"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Actualización parcial:** solo se modifican los campos enviados.
+  2. Si cambia `parent_id`, se revalida el árbol: no puede ser la propia sucursal (`parent_self`) ni un descendiente (`parent_cycle`), y debe existir activa (`parent_invalid`); en caso contrario → `400 FAIL_VALIDATION`.
+  3. Si cambia `parent_id` o `name`, se revalida la unicidad de `name` entre hermanas (clave compuesta `parent_id + name`).
+  4. **Actualización masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  5. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 10,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 10,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "parent_id": "La sucursal padre no puede ser un descendiente de la sucursal."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "parent_id": "La sucursal padre no puede ser un descendiente de la sucursal."
+    }
+  }
+  ```

@@ -1,0 +1,41 @@
+info:
+  name: Firmar
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/system/storage/images/users/signatures/signed-url/firma.png"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Generar URL Firmada para Archivo Privado
+
+  Genera un enlace de descarga temporal para un archivo alojado en un locker privado.
+  Si el almacenamiento es AWS S3, genera una URL prefirmada nativa de S3.
+  Si es almacenamiento local, genera una URL con `action_token` de un solo uso hacia `/v1/system/storage/download`.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/storage/{{locker_key}}/signed-url/{{filename}}`
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=stg_files`
+
+  ## 📤 Datos de Solicitud (Request)
+  - `locker_key`: clave del locker privado (puede ser multi-segmento, ej: `images/users/signatures`).
+  - `filename`: nombre del archivo a descargar.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "url": "http://localhost:8080/v1/system/storage/download?token=eyJhbGciOi...",
+    "expires_at": 1790497883
+  }
+  ```

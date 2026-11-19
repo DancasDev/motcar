@@ -1,0 +1,104 @@
+info:
+  name: Login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/auth/client"
+  body:
+    type: json
+    data: |-
+      {
+        "client_id": "{{client_id}}",
+        "client_secret": "{{client_secret}}"
+      }
+  auth: none
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const body = res.getBody();
+          if (body?.data?.token) {
+            bru.setEnvVar("jwt_token", body.data.token);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Iniciar Sesión de Cliente
+
+  Autentica un cliente API mediante `client_id`/`client_secret` y devuelve un token JWT. Es la **única ruta de cliente que no requiere token**.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/client`
+  - **Método**: `POST`
+  - **Filtros**: Ninguno (acceso público).
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `client_id` | `string` | Requerido. Mín: 32, Máx: 255. | Identificador público del cliente (generado al crearlo).
+  `client_secret` | `string` | Requerido. Mín: 32, Máx: 255. | Secreto del cliente (solo visible al crear/regenerar credenciales).
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "client_id": "cd44ae0d5c2a285a2a6971f8760be98db1f460fe7068972512705c5f823e83c7",
+    "client_secret": "a3f2b8c1..."
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. **Anti-enumeración:** credenciales incorrectas → `401` genérico.
+  2. **Límite de intentos:** los valores son parametrizables (por lo general **3 intentos fallidos en 1 día**, reiniciándose al pasar el lapso). Al superarse → `403 AUTH_CLIENT_ATTEMPTS_EXCEEDED` (el cliente queda temporalmente bloqueado).
+  3. **Auditoría de IP:** el token emitido queda vinculado a la dirección IP de origen; peticiones desde una IP distinta responderán `401 AUTH_TOKEN_IS_REFUSED`.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "expires_at": 1790555994,
+      "refresh_at": 1790555994
+    },
+    "messages": {
+      "success": "Bienvenido Sistema Externo"
+    }
+  }
+  ```
+
+  **❌ 401 Credenciales Incorrectas**
+  ```JSON
+  {
+    "status": 401,
+    "error": "AUTH_CLIENT_COMBINATION_NOT_FOUND",
+    "messages": {
+      "error": "Combinación de client_id y client_secret no encontrada."
+    }
+  }
+  ```
+
+  **❌ 403 Límite de Intentos Superado**
+  ```JSON
+  {
+    "status": 403,
+    "error": "AUTH_CLIENT_ATTEMPTS_EXCEEDED",
+    "messages": {
+      "error": "Se han superado los intentos permitidos."
+    }
+  }
+  ```

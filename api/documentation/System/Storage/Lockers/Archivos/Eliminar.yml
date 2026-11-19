@@ -1,0 +1,60 @@
+info:
+  name: Eliminar
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/system/storage/lockers/{{locker_id}}/files/avatar.jpg"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Eliminar Archivo de un Locker
+
+  Elimina físicamente un archivo dentro de un locker.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/storage/lockers/{{locker_id}}/files/{{filename}}`
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:module_code=stg_admin,only_user`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Ruta (Path Params)
+  Nombre | Tipo | Descripción
+  --- | --- | ---
+  `locker_id` | `integer` | ID del locker.
+  `filename` | `string` | Nombre del archivo (nombre con el que fue almacenado; puede incluir prefijo de timestamp).
+
+  > **Nota:** el `filename` puede enviarse también en el cuerpo JSON si no se incluye en la URL.
+
+  ## ⚙️ Reglas de Negocio
+  1. Locker inexistente → `404 STORAGE_LOCKER_NOT_FOUND`.
+  2. Archivo inexistente → `404 STORAGE_FILE_NOT_FOUND`.
+  3. La acción se registra en la bitácora.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Eliminado)**
+  ```JSON
+  {
+    "message": "Archivo eliminado exitosamente."
+  }
+  ```
+
+  **❌ 404 Archivo No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "STORAGE_FILE_NOT_FOUND",
+    "messages": {
+      "error": "El archivo \"avatar.jpg\" no se encuentra en el locker."
+    }
+  }
+  ```

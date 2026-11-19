@@ -1,0 +1,151 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "dni",
+        "metadata_field_type_id": 1,
+        "metadata_schema_group_id": 1,
+        "attribute_values": {
+          "label": { "es": "Documento", "en": "ID" }
+        },
+        "rules": [],
+        "position": 1
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("field_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Campo Dinámico
+
+  Registra uno o varios campos dinámicos en el esquema, procesando atributos y reglas de validación.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields` (Individual) o `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/fields?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=sys_metadata,only_user`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  code | string | Obligatorio. Máx: 40. Alpha dash. Único en el esquema. | Código identificador del campo.
+  metadata_field_type_id | integer | Obligatorio. ID de tipo de campo existente y activo. | Tipo de dato del campo.
+  metadata_schema_group_id | integer | Opcional. ID de grupo del mismo esquema existente y activo. | Grupo visual contenedor.
+  attribute_values | object | Opcional. Array clave-valor de atributos según el tipo. | Atributos del campo (etiqueta, placeholder, opciones).
+  rules | array | Opcional. Lista de reglas aplicables al tipo de campo. | Reglas de validación dinámica.
+  position | integer | Opcional. Menor o igual a 99. | Orden de visualización.
+  is_disabled | string | Opcional. Valores: "0", "1". Por defecto: "0". | Estado del campo.
+
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "code": "dni",
+    "metadata_field_type_id": 1,
+    "metadata_schema_group_id": 1,
+    "attribute_values": {
+      "label": { "es": "Documento", "en": "ID" }
+    },
+    "rules": [],
+    "position": 1
+  }
+  ```
+
+  **Ejemplo Masivo (con query `?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "code": "dni",
+      "metadata_field_type_id": 1,
+      "metadata_schema_group_id": 1,
+      "position": 1
+    },
+    {
+      "code": "passport",
+      "metadata_field_type_id": 1,
+      "metadata_schema_group_id": 1,
+      "position": 2
+    }
+  ]
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. El `code` debe ser único dentro del esquema de metadatos.
+  2. `metadata_schema_id` se asigna automáticamente a partir del parámetro de ruta.
+  3. Los atributos y reglas son validados dinámicamente según el tipo de campo (`AttributeValidator`, `RuleValidator`).
+  4. Cada inserción exitosa purga la caché consolidada del esquema (`purgeCache`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+
+  **✅ 207 Multi-Status (Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "code": "El campo código es obligatorio."
+    }
+  }
+  ```

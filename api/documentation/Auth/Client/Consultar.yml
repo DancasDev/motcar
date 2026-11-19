@@ -1,0 +1,76 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/auth/client"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Sesión de Cliente
+
+  Devuelve la información de la sesión actual del cliente de API autenticado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/client`
+  - **Método**: `GET`
+  - **Filtros**: `auth:only_client`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  Nombre | Tipo | Descripción
+  --- | --- | ---
+  `client` | `boolean` | (Opcional) `true` para incluir datos del cliente.
+  `role` | `boolean` | (Opcional) `true` para incluir roles asignados.
+  `permission` | `boolean` | (Opcional) `true` para incluir permisos y restricciones calculados.
+
+  > Por defecto, si no se envía ningún parámetro, se retornan todas las secciones (`client`, `role`, `permission`).
+
+  ## ⚙️ Reglas de Negocio
+  1. **Exclusividad de autenticación:** este endpoint solo admite tokens emitidos para clientes de API; el uso de tokens de usuario responde `401 AUTH_ONLY_CLIENT`.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "client": {
+        "id": 17,
+        "name": "Sistema Externo",
+        "description": "Cliente para integración ERP"
+      },
+      "role": [
+        {
+          "id": 1,
+          "code": "api_client",
+          "name": "Cliente API"
+        }
+      ],
+      "permission": {
+        "mod_users": 1
+      }
+    }
+  }
+  ```
+
+  **❌ 401 Token Inválido o Requerido**
+  ```JSON
+  {
+    "status": 401,
+    "error": "AUTH_TOKEN_IS_REQUIRED",
+    "messages": {
+      "error": "Debes iniciar sesión para acceder a este recurso."
+    }
+  }
+  ```

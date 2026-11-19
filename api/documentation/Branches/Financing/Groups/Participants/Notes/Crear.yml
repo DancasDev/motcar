@@ -1,0 +1,141 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/notes"
+  body:
+    type: json
+    data: |-
+      {
+        "note_category_id": 1,
+        "content": "Se contactó telefónicamente al participante. Manifiesta que realizará el pago de la cuota pendiente el próximo viernes.",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("participant_note_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Nota de Participante
+  
+  Registra una nota operativa, gestión de cobranza o seguimiento en la bitácora del participante.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/notes` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/notes?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=glb_notes,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  note_category_id | integer | Requerido. ID de categoría activa existente. | Clasificación de la nota (ej: Compromiso de Pago, Cobranza, Visita).
+  content | string | Requerido. Texto no vacío. | Detalle u observaciones de la gestión efectuada.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  > El sistema vincula de forma transparente el participante (`origin_id`), el origen polimórfico (`origin_type = 0`) y el autor de la nota a partir del token de sesión del usuario.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "note_category_id": 1,
+    "content": "Se contactó telefónicamente al participante. Manifiesta que realizará el pago el próximo viernes.",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../notes?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "note_category_id": 1,
+      "content": "Primer intento de contacto telefónico sin respuesta.",
+      "is_disabled": "0"
+    },
+    {
+      "note_category_id": 1,
+      "content": "Segundo intento: contestó y acordó pagar mañana.",
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. `note_category_id` debe existir y encontrarse habilitado en el catálogo general de categorías de notas.
+  2. El autor de la nota se almacena de forma inmutable a partir de la identidad del usuario autenticado que emite la petición.
+  3. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "content": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "content": "El campo es obligatorio."
+    }
+  }
+  ```

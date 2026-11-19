@@ -1,0 +1,57 @@
+info:
+  name: Configurar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/system/services/invitations/setup"
+  headers:
+    - name: X-Action-Token
+      value: "{{action_token}}"
+  body:
+    type: json
+    data: |-
+      {
+        "password": "Password1234*!"
+      }
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Configurar Contraseña Inicial (Setup)
+
+  Establece la contraseña del usuario, activa la cuenta (elimina marcas de force_to y verified_email) y revoca el action_token de un solo uso.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/services/invitations/setup`
+  - **Método**: `PUT`
+  - **Filtros**: `action_token:action=user_invitation`
+
+  ## 📤 Datos de Solicitud (Request)
+  ```json
+  {
+    "password": "Password1234*!",
+    "username": "opcional_confirmacion"
+  }
+  ```
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "user_id": 2
+    },
+    "messages": {
+      "success": "Tu contraseña se ha configurado exitosamente. Ya puedes iniciar sesión."
+    }
+  }
+  ```

@@ -1,0 +1,93 @@
+info:
+  name: Consultar
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/my/notifications"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("notification_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Notificaciones In-App
+
+  Recupera una notificación individual o el listado paginado de notificaciones In-App (campanita) del usuario autenticado. Usa el motor de consultas DQB.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications` (Lista) o `{{base_url}}/v1/my/notifications/{{notification_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:only_user`
+  - **Límite**: Por defecto (25 por página, máx 255)
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas: `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID de la notificación.
+  notification_type_id | 0 | L, F, O | ID del tipo de notificación.
+  notification_type_code | 0 | L, F, O | Código técnico del tipo de notificación.
+  channel_type | 0 | L, F, O | Tipo de canal (0: In-App).
+  channel_key | 0 | L, F, O | Destino o identificador del canal.
+  title | 0 | L, F, O | Título de la notificación.
+  message | 0 | L, F, O | Mensaje o contenido principal.
+  payload | 0 | L, F, O | Datos contextuales (JSON).
+  status | 0 | L, F, O | Estado de entrega/lectura.
+  sent_at | 0 | L, F, O | Fecha de envío.
+  read_at | 0 | L, F, O | Fecha en que fue leída.
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de actualización.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Listado)**
+  ```json
+  {
+    "status": 200,
+    "data": [
+      {
+        "id": 1,
+        "notification_type_id": 1,
+        "notification_type_code": "security_alert",
+        "channel_type": "0",
+        "channel_key": "1",
+        "title": "Inicio de sesión",
+        "message": "Se detectó un nuevo inicio de sesión.",
+        "payload": null,
+        "status": "unread",
+        "sent_at": "2026-10-04 12:00:00",
+        "read_at": null,
+        "created_at": "2026-10-04 12:00:00",
+        "updated_at": "2026-10-04 12:00:00"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "itemsPerPage": 25,
+      "totalItems": 1
+    }
+  }
+  ```

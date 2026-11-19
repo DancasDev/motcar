@@ -1,0 +1,89 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/my/profile"
+  body:
+    type: json
+    data: |-
+      {
+        "first_name": "Admin",
+        "photo_url": "https://example.com/avatar.jpg"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Perfil Propio
+
+  Modifica la información de perfil del usuario autenticado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/profile`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=my_profile,only_user`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `first_name` | `string` | Opcional. Máx: 60. | Nombre(s).
+  `last_name` | `string` | Opcional. Máx: 60. | Apellido(s).
+  `email` | `string` | Opcional. Máx: 120. Correo válido. Único. | Correo electrónico.
+  `sex` | `integer` | Opcional. Valores: `0`, `1`. | Sexo.
+  `country_id` | `integer` | Opcional. Debe existir en el catálogo. | País.
+  `language_id` | `integer` | Opcional. Debe existir en el catálogo. | Idioma.
+  `time_zone_id` | `integer` | Opcional. Debe existir en el catálogo. | Zona horaria.
+  `photo_url` | `string` | Opcional. URL válida. | Foto de perfil.
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "first_name": "Admin",
+    "language_id": 1,
+    "photo_url": "https://example.com/avatar.jpg"
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. Modifica exclusivamente los datos del usuario autenticado según el token activo.
+  2. La contraseña y los canales de notificación no se modifican desde este endpoint; disponen de sus propios endpoints específicos.
+  3. **Actualización parcial:** solo se modifican los campos enviados en el cuerpo de la petición.
+  4. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+
+  **❌ 400 Validación**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "email": "El campo debe contener un valor único."
+    }
+  }
+  ```

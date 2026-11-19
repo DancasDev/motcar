@@ -1,0 +1,69 @@
+info:
+  name: Solicitar
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/services/email/verification"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201) {
+          const body = res.getBody();
+          if (body?.data?.verification_id) {
+            bru.setEnvVar("verification_id", body.data.verification_id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Solicitar Verificación de Correo
+
+  Envía un código OTP al correo del usuario autenticado para verificar su dirección de correo.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/services/email/verification`
+  - **Método**: `POST`
+  - **Filtros**: `auth:only_user`
+
+   ## ⚙️ Reglas de Negocio
+   1. **Exclusividad de autenticación:** este endpoint solo admite tokens emitidos para usuarios; el uso de tokens de cliente responde `401 AUTH_ONLY_USER`.
+   2. Si el usuario ya tiene su correo verificado → `400 SERVICE_EMAIL_VERIFICATION_ALREADY_VERIFIED`.
+   3. Si el usuario no tiene correo configurado → `404 SERVICE_EMAIL_VERIFICATION_EMAIL_NOT_FOUND`.
+   4. El código expira en **10 minutos** y se usa en el paso de confirmación.
+   5. El `verification_id` devuelto se almacena automáticamente en la variable de entorno `{{verification_id}}` (script de la petición).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "verification_id": 15
+    },
+    "messages": {
+      "success": "Se ha enviado un código de verificación a tu correo electrónico. Expirará en 10 minutos."
+    }
+  }
+  ```
+
+  **❌ 400 Ya Verificado**
+  ```JSON
+  {
+    "status": 400,
+    "error": "SERVICE_EMAIL_VERIFICATION_ALREADY_VERIFIED",
+    "messages": {
+      "error": "El correo ya ha sido verificado."
+    }
+  }
+  ```

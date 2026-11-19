@@ -1,0 +1,149 @@
+info:
+  name: Estado
+  type: http
+  seq: 6
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/status"
+  body:
+    type: json
+    data: |-
+      {
+        "status": "1"
+      }
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Transición de Estado del Recibo (Confirmar / Anular)
+  
+  Permite confirmar un recibo en borrador ejecutando la cascada de imputación FIFO sobre las cuentas por cobrar, o anular un recibo previamente emitido revirtiendo atómicamente sus efectos financieros.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/status`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts,only_user`
+  - **Límite**: no aplica
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  status | string | Requerido. In: `["1", "2"]`. | Nuevo estado: `"1"` (Confirmar recibo) o `"2"` (Anular recibo).
+  cancellation_reason | string | Condicional. Requerido si `status = "2"`. Máx 255 car. | Justificación u observación obligatoria de anulación.
+  
+  **Ejemplo Confirmación (`status: "1"`):**
+  ```JSON
+  {
+    "status": "1"
+  }
+  ```
+  
+  **Ejemplo Anulación (`status: "2"`):**
+  ```JSON
+  {
+    "status": "2",
+    "cancellation_reason": "Error en la cuenta receptora del depósito bancario según verificación del cliente."
+  }
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  
+  ### Al Confirmar (`status = "1"`):
+  1. El recibo debe estar en estado Borrador (`status = "0"`).
+  2. Debe poseer al menos un medio de pago (`payments`) y una obligación cargada (`items`), sumando un importe total en USD mayor a cero.
+  3. **Cascada FIFO e Imputación Atómica:**
+     - Amortiza las cuentas por cobrar seleccionadas priorizando recargos/cargos administrativos y cuotas vencidas más antiguas.
+     - Actualiza el saldo pagado (`paid_amount`) y estado (`status`) de cada cuenta por cobrar (`1` = Parcial, `2` = Pagado).
+     - Si se pagó con saldo a favor existente (`origin_type = 1`), debita dicho crédito.
+     - Si el total cobrado excede la deuda imputada, **genera automáticamente un Saldo a Favor** (`acc_client_credit`) para el cliente con la tasa y cuenta de pago de la última transacción.
+     - Actualiza el estado de morosidad del cliente en el grupo SAM y elimina la memoria caché del comprobante.
+  
+  ### Al Anular (`status = "2"`):
+  1. El recibo no debe encontrarse previamente cerrado/anulado (`status = "2"`).
+  2. Exige de forma obligatoria el campo `cancellation_reason`.
+  3. **Reversión Financiera Total:**
+     - Reversa los montos abonados a las cuentas por cobrar vinculadas, restaurando su saldo pendiente.
+     - Restaura los saldos a favor del cliente que fueron debitados para pagar este recibo.
+     - Anula cualquier saldo a favor que hubiese sido originado por un sobrepago de este recibo.
+     - Actualiza el estado de morosidad del cliente y vacía la caché.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Confirmación Exitosa con Cascada y Crédito Excedente)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "receipt_id": 1,
+      "code": "RECP-01-261005-A1B2C3",
+      "status": "1",
+      "total_usd": 100.0,
+      "allocations": [
+        {
+          "receivable_id": 10,
+          "allocated_amount": 80.0,
+          "new_paid_amount": 80.0,
+          "new_status": "2",
+          "type": "1"
+        }
+      ],
+      "credit_generated": {
+        "id": 5,
+        "currency_id": 1,
+        "amount": 20.0,
+        "exchange_rate": 1.0
+      }
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Anulación Exitosa)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "receipt_id": 1,
+      "status": "2",
+      "cancellation_reason": "Error en la cuenta receptora del depósito bancario según verificación del cliente."
+    }
+  }
+  ```
+  
+  **❌ 400 Bad Request (Falta motivo de anulación o pagos vacíos)**
+  ```JSON
+  {
+    "status": 400,
+    "error": "CANCELLATION_REASON_REQUIRED",
+    "message": "Debe especificar un motivo para anular el comprobante."
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```
+  
+  **❌ 409 Conflict (Transición inválida o recibo ya cerrado)**
+  ```JSON
+  {
+    "status": 409,
+    "error": "INVALID_TRANSITION",
+    "message": "La transición de estado solicitada no es válida para el comprobante actual."
+  }
+  ```

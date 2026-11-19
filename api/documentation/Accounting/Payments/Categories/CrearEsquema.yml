@@ -1,0 +1,59 @@
+info:
+  name: CrearEsquema
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/schema"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Aprovisionar Esquema de Metadatos
+  
+  Aprovisiona de forma controlada e idempotente una relación 1:1 de esquema de metadatos dinámicos para la categoría de cuentas de pago seleccionada.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/schema`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_payment_account_categories,only_user`
+  - **Límite**: no aplica
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  No requiere payload en el cuerpo. El ID de la categoría se envía a través de la URL (`{{payment_account_category_id}}`).
+  
+  ## ⚙️ Reglas de Negocio
+  1. Si la categoría ya posee un esquema de metadatos vinculado previamente, la operación es idempotente y devuelve el identificador ya asignado sin duplicar registros.
+  2. Si no posee esquema, genera automáticamente un nuevo registro de esquema bajo la nomenclatura estándar y lo asocia a la categoría, invalidando la caché de categorías.
+  3. Si la categoría no existe o está inhabilitada, retorna `404 RECORD_NOT_FOUND`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "category_id": 1,
+      "metadata_schema_id": 3
+    }
+  }
+  ```
+  
+  **❌ 404 Registro No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

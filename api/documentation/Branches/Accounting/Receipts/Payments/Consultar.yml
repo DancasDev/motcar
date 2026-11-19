@@ -1,0 +1,143 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/payments"
+  params:
+    - name: fields
+      value: "id,receipt_id,receipt_code,origin_type,origin_id,payment_account_name,payment_date,exchange_rate,amount,amount_usd,reference,created_at"
+      type: query
+      disabled: false
+    - name: limit
+      value: "25"
+      type: query
+      disabled: true
+    - name: page
+      value: "1"
+      type: query
+      disabled: true
+    - name: sort
+      value: "id"
+      type: query
+      disabled: true
+    - name: search
+      value: ""
+      type: query
+      disabled: true
+
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Medios de Pago de Recibo
+  
+  Consulta la lista de transacciones y medios de pago cargados a un recibo de cobro determinado, o la información detallada de un pago individual.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/payments` (Listado) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/payments/{{receipt_payment_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts`
+  - **Límite**: 25 registros por defecto (máximo 100 por página)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 🔍 Parámetros de Consulta (Query String)
+  
+  Parámetro | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  fields | string | Opcional. Lista separada por comas. | Campos específicos a recuperar.
+  limit | integer | Opcional. Rango: 1 - 100. Por defecto: 25. | Cantidad máxima de registros por página.
+  page | integer | Opcional. Mínimo: 1. Por defecto: 1. | Número de página a consultar.
+  sort | string | Opcional. Prefijo `-` para orden descendente. | Ordenamiento por campos permitidos (ej. `id`, `payment_date`).
+  search | string | Opcional. Búsqueda textual. | Búsqueda textual en referencias (`reference`) y nombres.
+  
+  ## 📊 Tabla de Campos Disponibles (DQB)
+  
+  Campo | Tipo | Nivel de Acceso | Descripción
+  --- | --- | --- | ---
+  id | integer | Público | Identificador único del pago en el recibo.
+  receipt_id | integer | Público | Identificador del recibo cabecera.
+  receipt_code | string | Público | Código del recibo (`acc_receipt.code`).
+  origin_type | string | Público | Tipo de origen: `"0"` (Cuenta bancaria/caja) o `"1"` (Saldo a favor).
+  origin_id | integer | Público | Identificador de la cuenta o saldo a favor correspondiente.
+  payment_account_name | string | Público | Nombre de la cuenta bancaria (`acc_payment_account.name`).
+  payment_date | string | Público | Fecha en la que se efectuó el pago.
+  exchange_rate | number | Público | Tasa de cambio aplicada al momento de registrar el pago.
+  amount | number | Público | Monto en la moneda nominal de la cuenta o saldo a favor.
+  amount_usd | number | Público | Equivalencia en dólares calculada (`amount / exchange_rate`).
+  reference | string | Público | Referencia bancaria o número de confirmación.
+  file_url | string | Público | URL del soporte digital de pago.
+  notes | string | Público | Observaciones del pago.
+  created_at | string | Público | Fecha de registro del pago.
+  updated_at | string | Público | Fecha de última modificación.
+  deleted_at | string | Interno (Nivel 2) | Fecha de eliminación suave.
+  
+  ## ⚙️ Reglas de Negocio
+  1. Solo retorna pagos asociados al recibo especificado en la ruta (`receipt_id`) y dentro de la sucursal activa.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado Paginado)**
+  ```JSON
+  {
+    "status": 200,
+    "total": 1,
+    "data": [
+      {
+        "id": 1,
+        "receipt_id": 1,
+        "receipt_code": "RECP-01-261005-A1B2C3",
+        "origin_type": "0",
+        "origin_id": 1,
+        "payment_account_name": "Cuenta Banesco USD",
+        "payment_date": "2026-10-05",
+        "exchange_rate": "1.00000000",
+        "amount": "80.00",
+        "amount_usd": "80.00",
+        "reference": "REF-TRF-987654",
+        "created_at": "2026-10-05 14:32:00"
+      }
+    ]
+  }
+  ```
+  
+  **✅ 200 OK (Consulta Unitaria - `.../payments/{{receipt_payment_id}}`)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "receipt_id": 1,
+      "receipt_code": "RECP-01-261005-A1B2C3",
+      "origin_type": "0",
+      "origin_id": 1,
+      "payment_account_name": "Cuenta Banesco USD",
+      "payment_date": "2026-10-05",
+      "exchange_rate": "1.00000000",
+      "amount": "80.00",
+      "amount_usd": "80.00",
+      "reference": "REF-TRF-987654",
+      "file_url": null,
+      "notes": "Pago mediante transferencia bancaria nacional.",
+      "created_at": "2026-10-05 14:32:00",
+      "updated_at": "2026-10-05 14:32:00"
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo o Pago no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```

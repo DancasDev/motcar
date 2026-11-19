@@ -1,0 +1,138 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/access/clients/{{client_id}}/roles"
+  body:
+    type: json
+    data: |-
+      {
+        "role_id": 1,
+        "priority": 1,
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("role_entity_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Rol de Cliente
+  
+  Registra un nuevo rol de cliente. 
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/clients/{{client_id}}/roles`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_client_roles,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  role_id | integer | Requerido. Debe existir y estar activo. | ID del rol a asignar.
+  priority | integer | Opcional. Natural. | Prioridad (única por entidad).
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "role_id": 1,
+    "priority": 1,
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/access/clients/{{client_id}}/roles?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "role_id": 1,
+      "priority": 1,
+      "is_disabled": "0"
+    },
+    {
+      "role_id": 1,
+      "priority": 1,
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. La asignación queda vinculada automáticamente al cliente de API especificado en la ruta.
+  2. No se permite asignar el mismo rol más de una vez a un cliente.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 10
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 10
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "role_id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "role_id": "El campo debe contener un valor único."
+    }
+  }
+  ```

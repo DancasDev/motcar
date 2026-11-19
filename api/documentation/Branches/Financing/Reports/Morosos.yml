@@ -1,0 +1,75 @@
+info:
+  name: Morosos
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/reports/defaulters"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Reporte de Morosos y Gestión de Cobranza
+
+  Consulta consolidada de clientes con cuotas en mora, monto acumulado vencido, días de retraso, contacto de referencia (quien lo refirió con $15) para localización y alerta de si el beneficio ya fue entregado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/reports/defaulters`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups`
+  - **Parámetros de Consulta (Query Params)**:
+    - `group_id` *(opcional, entero)*: Filtra los morosos de un grupo SAM específico.
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo. Parámetros opcionales vía query string.
+
+  ## ⚙️ Reglas de Negocio
+  1. Identifica participantes que tengan cuotas con `due_date < CURDATE()` e impagas, o que tengan activa la bandera `is_overdue = 1`.
+  2. Incluye a quien refirió al cliente (`referrer`) con su número de teléfono como contacto de emergencia para auxilio de cobranza o prevención de fraude.
+  3. Señala si el cliente ya recibió su beneficio (`is_awarded = true`) con los datos del beneficio adjudicado para evaluar el riesgo patrimonial.
+  4. Los resultados se entregan ordenados descendentemente por el monto de la deuda en mora (`overdue_amount DESC`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": [
+      {
+        "participant_id": 142,
+        "group_id": 18,
+        "group_name": "GRUPO R",
+        "position": 4,
+        "overdue_installments": 20,
+        "overdue_amount": 1560.0,
+        "oldest_due_date": "2025-09-05",
+        "days_overdue": 38,
+        "is_awarded": true,
+        "awarded_at": "2026-02-15",
+        "benefit_summary": "BERA SBR - AZUL - 8X12345678",
+        "client": {
+          "id": 85,
+          "name": "KAHIRA VALECILLOS",
+          "identification_type": "0",
+          "identification_value": "V20123456",
+          "phone_primary": "04121234567",
+          "phone_secondary": "02611234567"
+        },
+        "referrer": {
+          "id": 2,
+          "name": "Valery Motcar",
+          "phone": "0414-0000000"
+        }
+      }
+    ],
+    "count": 1
+  }
+  ```

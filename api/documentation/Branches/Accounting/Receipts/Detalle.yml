@@ -1,0 +1,111 @@
+info:
+  name: Detalle
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/detail"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Detalle Consolidado del Recibo
+  
+  Obtiene la estructura completa y consolidada del recibo de cobro, incluyendo datos de la cabecera, cliente, cajero, renglones de cuentas por cobrar imputadas (`items`), medios de pago (`payments`), saldos a favor generados (`credits`) y balance financiero total expresado en USD.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/detail`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts`
+  - **Límite**: no aplica (estructura fija consolidada)
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## ⚙️ Reglas de Negocio y Rendimiento
+  1. **Caché de Alto Rendimiento:** La respuesta es almacenada en memoria caché durante 5 minutos (`300` segundos) bajo la clave `acc_receipt_detail_{branch_id}_{receipt_id}` para evitar impacto en base de datos.
+  2. **Invalidación Automática:** Cualquier cambio en la cabecera, renglones, pagos o confirmación/anulación del estado invalida automáticamente la caché.
+  3. **Protección Anti-Stampede:** Si el recibo no existe en la sucursal, se cachea una respuesta vacía temporal para proteger el servidor frente a consultas abusivas.
+  4. **Cálculo de Totales Multidivisa:** Todos los pagos y créditos registrados en monedas secundarias son convertidos automáticamente a USD usando la tasa de cambio (`exchange_rate`) capturada al momento del registro.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Detalle Consolidado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "branch_id": 1,
+      "branch_name": "Sucursal Central",
+      "client_id": 1,
+      "client_first_name": "Juan",
+      "client_last_name": "Pérez",
+      "client_identification_type": "V",
+      "client_identification_value": "12345678",
+      "client_phone": "04141234567",
+      "client_address": "Av. Principal 123",
+      "client_city": "Caracas",
+      "collector_id": 1,
+      "collector_first_name": "Admin",
+      "collector_last_name": "Sistema",
+      "code": "RECP-01-261005-A1B2C3",
+      "date": "2026-10-05",
+      "notes": "Recibo de recaudación de cuotas correspondiente al mes en curso.",
+      "cancellation_reason": null,
+      "status": "1",
+      "created_at": "2026-10-05 14:30:00",
+      "updated_at": "2026-10-05 14:35:00",
+      "items": [
+        {
+          "id": 1,
+          "receipt_id": 1,
+          "receivable_id": 10,
+          "amount": "80.00",
+          "type": "1",
+          "receivable_description": "Cuota 1/24 - SAM Motos Grupo 01",
+          "receivable_total_amount": "80.00",
+          "receivable_paid_amount": "80.00",
+          "receivable_status": "2",
+          "display_description": "Cuota 1/24 - SAM Motos Grupo 01"
+        }
+      ],
+      "payments": [
+        {
+          "id": 1,
+          "receipt_id": 1,
+          "origin_type": "0",
+          "origin_id": 1,
+          "amount": "80.00",
+          "exchange_rate": "1.00000000",
+          "reference": "REF-TRF-987654",
+          "payment_account_name": "Cuenta Banesco USD",
+          "payment_category_name": "Transferencia Bancaria",
+          "currency_code": "USD",
+          "currency_symbol": "$"
+        }
+      ],
+      "credits": [],
+      "totals": {
+        "payments_usd": 80.0,
+        "items_usd": 80.0,
+        "credit_usd": 0.0,
+        "balance_usd": 0.0
+      }
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo no encontrado)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```

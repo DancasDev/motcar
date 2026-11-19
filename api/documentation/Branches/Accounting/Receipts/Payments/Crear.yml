@@ -1,0 +1,187 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/payments"
+  body:
+    type: json
+    data: |-
+      {
+        "origin_type": "0",
+        "origin_id": 1,
+        "amount": 80.0,
+        "payment_date": "2026-10-05",
+        "reference": "REF-TRF-987654",
+        "notes": "Pago mediante transferencia bancaria nacional."
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("receipt_payment_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Registrar Medio de Pago en Recibo
+  
+  Registra un medio de pago recibido (cuenta bancaria, caja de efectivo o aplicación de saldo a favor) dentro de un recibo en estado borrador.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/payments` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receipts/{{receipt_id}}/payments?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receipts,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  origin_type | string | Opcional. In: `["0", "1"]`. Por defecto `"0"`. | Tipo de origen: `"0"` (Cuenta bancaria / caja) o `"1"` (Saldo a favor del cliente).
+  origin_id | integer | Requerido. Clave foránea válida. | ID de la cuenta bancaria (`acc_payment_account`) si `origin_type = "0"`, o ID del crédito (`acc_client_credit`) si `origin_type = "1"`.
+  amount | number | Requerido. Decimal estricto > 0. | Importe cobrado en la moneda original de la cuenta o crédito.
+  payment_date | string | Opcional. Formato YYYY-MM-DD. Por defecto hoy. | Fecha en la que se efectuó el pago.
+  reference | string | Opcional. Máx 60 caracteres. | Número de referencia bancaria o comprobante.
+  file_url | string | Opcional. URL válida. Máx 255 car. | Enlace al comprobante digital o captura de la transacción.
+  notes | string | Opcional. Máx 255 caracteres. | Notas u observaciones sobre el pago.
+  
+  > **Mapeo y Cálculos Automáticos:**
+  > - También se acepta `payment_account_id` como alias directo de `origin_id` cuando `origin_type = "0"`.
+  > - La tasa de cambio (`exchange_rate`) y el equivalente en dólares (`amount_usd`) son resueltos y calculados automáticamente por el backend en función de la moneda de la cuenta y la fecha del pago.
+  
+  **Ejemplo Individual (Cuenta Bancaria):**
+  ```JSON
+  {
+    "origin_type": "0",
+    "origin_id": 1,
+    "amount": 80.0,
+    "payment_date": "2026-10-05",
+    "reference": "REF-TRF-987654",
+    "notes": "Pago mediante transferencia bancaria nacional."
+  }
+  ```
+  
+  **Ejemplo Individual (Aplicando Saldo a Favor):**
+  ```JSON
+  {
+    "origin_type": "1",
+    "origin_id": 5,
+    "amount": 20.0
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../payments?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "origin_type": "0",
+      "origin_id": 1,
+      "amount": 50.0,
+      "reference": "REF-PAGO-01"
+    },
+    {
+      "origin_type": "1",
+      "origin_id": 5,
+      "amount": 30.0
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Estado Borrador Requerido:** El recibo padre debe encontrarse en estado Borrador (`status = "0"`). De lo contrario, se deniega con error `409 RECEIPT_NOT_DRAFT`.
+  2. **Reglas para Saldo a Favor (`origin_type = "1"`):**
+     - El saldo a favor debe pertenecer al cliente titular del recibo (`client_id`).
+     - Debe encontrarse en estado disponible (`status = 0`) con saldo mayor a cero (`available_amount > 0`).
+     - El monto ingresado no puede superar el disponible (`CREDIT_INSUFFICIENT_BALANCE`).
+     - No se permite asociar el mismo saldo a favor más de una vez en el mismo recibo (`CREDIT_DUPLICATE_IN_RECEIPT`).
+     - Aplica la tasa de cambio histórica congelada al momento en que se originó dicho saldo a favor.
+  3. **Reglas para Cuentas Bancarias (`origin_type = "0"`):**
+     - Si la cuenta opera en moneda extranjera distinta a USD, el sistema consulta la tasa oficial (`acc_exchange_rate`) registrada a la fecha del pago. Si no existe cotización para la fecha, retorna `400 EXCHANGE_RATE_NOT_FOUND`.
+  4. **Creación Masiva:** Se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de pagos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **⚠️ 207 Multi-Status (Creación Masiva Mixta)**
+  ```JSON
+  {
+    "status": 207,
+    "total": 2,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "CREDIT_INSUFFICIENT_BALANCE",
+        "messages": {
+          "amount": "El importe excede el saldo a favor disponible para el cliente."
+        }
+      }
+    ]
+  }
+  ```
+  
+  **❌ 400 Bad Request (Saldo insuficiente o tasa no encontrada)**
+  ```JSON
+  {
+    "status": 400,
+    "error": "CREDIT_INSUFFICIENT_BALANCE",
+    "messages": {
+      "amount": "El importe (50) excede el saldo a favor disponible (30.00)."
+    }
+  }
+  ```
+  
+  **❌ 404 Not Found (Recibo o Cuenta no encontrada)**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECEIPT_NOT_FOUND",
+    "message": "El recibo especificado no existe o no pertenece a la sucursal indicada."
+  }
+  ```
+  
+  **❌ 409 Conflict (Recibo no es borrador)**
+  ```JSON
+  {
+    "status": 409,
+    "error": "RECEIPT_NOT_DRAFT",
+    "message": "Solo es posible modificar recibos en estado borrador."
+  }
+  ```

@@ -1,0 +1,110 @@
+info:
+  name: Subir
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/storage/{{locker_key}}"
+  body:
+    type: multipart-form
+    data:
+      - name: file
+        type: file
+        value: ""
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Subir Archivo
+
+  Sube un archivo a un locker. El archivo se valida contra los MIME types y el tamaño permitidos por el locker, y se almacena con un nombre generado automáticamente. Si el locker tiene la optimización activa, las imágenes se optimizan.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/storage/{{locker_key}}`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=stg_files`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Ruta (Path Params)
+  Nombre | Tipo | Descripción
+  --- | --- | ---
+  `locker_key` | `string` | Clave del locker de destino. Soporta **subniveles** (ej: `images/profile-pics`).
+
+  ### Body (multipart/form-data)
+  Campo | Tipo | Descripción
+  --- | --- | ---
+  `file` | `file` | Archivo a subir (campo obligatorio).
+
+  ## ⚙️ Reglas de Negocio
+  1. Locker inexistente o inhabilitado → `404 STORAGE_LOCKER_NOT_FOUND`.
+  2. **Acceso por lockers:** el permiso del usuario sobre el módulo `storage` puede limitar a qué lockers puede subir mediante su `payload`. Si el payload es `null` o `{"lck_ids": null}` → acceso a **todos** los lockers. Si el payload trae `{"lck_ids": [enteros]}`, el `id` del locker debe estar en la lista; en caso contrario → `403 STORAGE_LOCKER_ACCESS_DENIED`.
+  3. Sin archivo o inválido → `400 STORAGE_UPLOAD_ERROR`.
+  4. MIME type no permitido por el locker → `400 STORAGE_MIME_TYPE_NOT_ALLOWED`.
+  5. Tamaño superior al `max_size` del locker → `400 STORAGE_FILE_TOO_LARGE`.
+  6. **Optimización de imágenes:** si el locker tiene `optimize_file=1`, la imagen se convierte a **WEBP (calidad 80)** y se **reduce solo si supera los 1920px de ancho** (`scaleDown`). Las imágenes más pequeñas (iconos, logos) conservan su resolución original para evitar upscaling y pixelación.
+  7. El archivo se guarda con un nombre único con prefijo de timestamp (colisión-safe). El nombre final se devuelve en `filename`.
+  8. **`path` es informativo:** es la ruta del archivo dentro del driver (sin la URL base). El `url` sí es la URL pública completa.
+  9. **`url` depende del driver configurado:** con el driver `local` se compone a partir del `base_url` del servidor; con el driver `s3` a partir del `s3_url` del bucket.
+  10. **Eliminar un archivo:** la operación de borrado usa el `filename` (o el path relativo) y requiere acceso a la **administración de lockers** (`auth:module_code=storage_admin`), no el endpoint de subida.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito)**
+  ```JSON
+  {
+    "path": "images/profile-pics/1785570768_c9129fa4d041344a680f.webp",
+    "filename": "1785570768_c9129fa4d041344a680f.webp",
+    "url": "http://127.0.0.1:8080/storage/images/profile-pics/1785570768_c9129fa4d041344a680f.webp"
+  }
+  ```
+
+  **❌ 403 Sin Acceso al Locker**
+  ```JSON
+  {
+    "status": 403,
+    "error": "STORAGE_LOCKER_ACCESS_DENIED",
+    "messages": {
+      "error": "No tienes acceso al locker \"images/profile-pics\"."
+    }
+  }
+  ```
+
+  **❌ 404 Locker No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "STORAGE_LOCKER_NOT_FOUND",
+    "messages": {
+      "error": "El locker \"images/profile-pics\" no se encuentra."
+    }
+  }
+  ```
+
+  **❌ 400 MIME No Permitido**
+  ```JSON
+  {
+    "status": 400,
+    "error": "STORAGE_MIME_TYPE_NOT_ALLOWED",
+    "messages": {
+      "error": "El MIME type \"text/plain\" no está permitido para este locker."
+    }
+  }
+  ```
+
+  **❌ 400 Sin Archivo**
+  ```JSON
+  {
+    "status": 400,
+    "error": "STORAGE_UPLOAD_ERROR",
+    "messages": {
+      "error": "No se recibió ningún archivo."
+    }
+  }
+  ```

@@ -1,0 +1,137 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/groups/{{group_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "title": { "es": "Información Personal Actualizada", "en": "Updated Personal Info" },
+        "position": 2
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Grupo de Metadatos
+
+  Modifica uno o varios grupos visuales de metadatos existentes.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/groups/{{group_id}}` (Individual) o `{{base_url}}/v1/system/metadata/{{metadata_schema_id}}/groups` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=sys_metadata,only_user`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  code | string | Opcional. Máx: 60. Alpha dash. Único en el esquema. | Código identificador del grupo.
+  title | object | Opcional. Multilingüe i18n (min: 1, max: 120 por idioma). | Título descriptivo.
+  description | object | Opcional. Multilingüe i18n (max: 255 por idioma). | Descripción funcional.
+  position | integer | Opcional. Menor o igual a 99. | Orden de visualización.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado del grupo.
+
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "title": { "es": "Información Personal Actualizada", "en": "Updated Personal Info" },
+    "position": 2
+  }
+  ```
+
+  **Ejemplo Masivo (vía `/v1/system/metadata/{{metadata_schema_id}}/groups`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1,
+      "position": 2
+    },
+    {
+      "id": 2,
+      "position": 1
+    }
+  ]
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. `metadata_schema_id` es inmutable; se mantiene asociado al esquema de la URL.
+  2. **Actualización parcial:** solo se modifican los campos enviados.
+  3. **Actualización masiva:** se habilita cuando no se envía identificador en la URL; cada objeto debe incluir su `id`.
+  4. Cada actualización exitosa purga la caché consolidada del esquema (`purgeCache`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "position": "El campo position debe ser un número entero positivo menor o igual a 99."
+    }
+  }
+  ```

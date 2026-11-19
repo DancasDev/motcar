@@ -1,0 +1,236 @@
+#--------------------------------------------------------------------
+# Example Environment Configuration file
+#
+# This file can be used as a starting point for your own
+# custom .env files, and contains most of the possible settings
+# available in a default install.
+#
+# By default, all of the settings are commented out. If you want
+# to override the setting, you must un-comment it by removing the '#'
+# at the beginning of the line.
+#--------------------------------------------------------------------
+
+#--------------------------------------------------------------------
+# ENVIRONMENT
+#--------------------------------------------------------------------
+
+# CI_ENVIRONMENT = production
+
+#--------------------------------------------------------------------
+# APP
+#--------------------------------------------------------------------
+
+# app.baseURL = ''
+# If you have trouble with `.`, you could also use `_`.
+# app_baseURL = ''
+# app.forceGlobalSecureRequests = false
+# app.CSPEnabled = false
+
+#--------------------------------------------------------------------
+# DATABASE
+#--------------------------------------------------------------------
+
+# database.default.hostname = localhost
+# database.default.database = ci4
+# database.default.username = root
+# database.default.password = root
+# database.default.DBDriver = MySQLi
+# database.default.DBPrefix =
+# database.default.port = 3306
+
+# If you use MySQLi as tests, first update the values of Config\Database::$tests.
+# database.tests.hostname = localhost
+# database.tests.database = ci4_test
+# database.tests.username = root
+# database.tests.password = root
+# database.tests.DBDriver = MySQLi
+# database.tests.DBPrefix =
+# database.tests.charset = utf8mb4
+# database.tests.DBCollat = utf8mb4_general_ci
+# database.tests.port = 3306
+
+#--------------------------------------------------------------------
+# ENCRYPTION
+#--------------------------------------------------------------------
+
+# encryption.key =
+
+#--------------------------------------------------------------------
+# JWT (JSON Web Tokens)
+#--------------------------------------------------------------------
+
+# Clave secreta para tokens de sesión/autenticación (64 hex chars)
+# jwt.authSecretKey =
+# jwt.authRevocationKey = jwt_auth_rev
+
+# Clave secreta para tokens de acciones temporales (invitaciones, descargas, etc.)
+# jwt.actionSecretKey =
+# jwt.actionRevocationKey = jwt_act_rev
+
+# Duraciones y tiempos de refresco (segundos)
+# jwt.userTokenDuration = 2700
+# jwt.userTokenUpdateInterval = 600
+# jwt.clientTokenDuration = 10800
+# jwt.clientTokenUpdateInterval = 600
+
+#--------------------------------------------------------------------
+# SESSION
+#--------------------------------------------------------------------
+
+# session.driver = 'CodeIgniter\Session\Handlers\FileHandler'
+# session.savePath = null
+
+#--------------------------------------------------------------------
+# LOGGER
+#--------------------------------------------------------------------
+
+# logger.threshold = 4
+
+#--------------------------------------------------------------------
+# EMAIL
+#--------------------------------------------------------------------
+# Protocolos: mail, sendmail, smtp
+# mail  → usa la funcion mail() de PHP (requiere servidor local)
+# sendmail → usa sendmail/Postfix local
+# smtp  → conexion a un servidor externo (Gmail, etc.)
+
+# email.fromEmail   =
+# email.fromName    =
+# email.protocol    = smtp
+
+# Para protocolo 'smtp':
+# email.SMTPHost    =
+# email.SMTPUser    =
+# email.SMTPPass    =
+# email.SMTPPort    = 587
+# email.SMTPCrypto  = tls
+# email.SMTPTimeout = 5
+
+# Para protocolo 'sendmail' (ruta del binario):
+# email.mailPath = /usr/sbin/sendmail
+
+# email.mailType    = html
+
+#--------------------------------------------------------------------
+# AUTH
+#--------------------------------------------------------------------
+# Usuario
+# auth.userTokenDuration = 2700
+# auth.userCaseSensitive = true
+# auth.userTokenUpdateInterval = 60
+
+# Cliente
+# auth.clientTokenDuration = 10800
+# auth.clientTokenUpdateInterval = 1800
+
+#--------------------------------------------------------------------
+# STORAGE
+#--------------------------------------------------------------------
+# Driver de almacenamiento: 'local' o 's3'
+# storage.driver = local
+
+# Local
+# storage.localRoot = ""
+
+# S3 (requiere league/flysystem-aws-s3-v3):
+# storage.s3Key = ""
+# storage.s3Secret = ""
+# storage.s3Region = ""
+# storage.s3Bucket = ""
+# storage.s3Url = ""
+
+#--------------------------------------------------------------------
+# CACHE
+#--------------------------------------------------------------------
+# Handler de caché: file, redis, predis, memcached, apcu, dummy, wincache
+# NOTA: para escalado horizontal usa un handler centralizado (redis/predis/memcached).
+# cache.handler = file
+# cache.backupHandler = dummy
+# cache.prefix =
+# cache.ttl = 60
+
+# Para handler 'file':
+# cache.file.storePath =
+# cache.file.mode = 0640
+
+# Para handler 'memcached':
+# cache.memcached.host = 127.0.0.1
+# cache.memcached.port = 11211
+# cache.memcached.weight = 1
+# cache.memcached.raw = false
+
+# Para handler 'redis' o 'predis':
+# cache.redis.host = 127.0.0.1
+# cache.redis.port = 6379
+# cache.redis.password =
+# cache.redis.database = 0
+# cache.redis.timeout = 0
+# cache.redis.async = false
+# cache.redis.persistent = false
+
+#--------------------------------------------------------------------
+# COMMS — Ecosistema de Comunicación Unificado
+# Cubre tanto el Servicio de Mensajería (directo) como el Outbox de
+# Notificaciones (asíncrono). Las claves de Rate Limit son globales
+# y compartidas entre ambos subsistemas.
+#--------------------------------------------------------------------
+
+# --- CANALES POR SUBSISTEMA ---
+
+# Canales para MessagingService (envíos inmediatos)
+# Valores: email, push, telegram
+# comms.messaging_channels = email,push,telegram
+
+# Canales para NotificationDispatcher / Outbox (envíos asíncronos)
+# Valores: inapp, email, push
+# comms.notification_channels = inapp,email,push
+
+# --- RATE LIMIT GLOBAL (compartido entre MessagingService y NotificationDispatcher) ---
+# Clave en caché: {prefix}{canal}  (rl_msg_email | rl_msg_push | rl_msg_telegram)
+# comms.rate_limit_cache_prefix = rl_msg_
+
+# Email — límite para SMTP transaccional
+# comms.rate_email_window = 3600   # segundos por ventana (default: 1 hora)
+# comms.rate_email_max    = 100    # máximo de envíos por ventana
+
+# Push FCM — FCM HTTP v1
+# comms.rate_push_window  = 60     # segundos por ventana (default: 1 minuto)
+# comms.rate_push_max     = 500    # máximo de envíos por ventana
+
+# Telegram — Bot API
+# comms.rate_telegram_window = 1   # segundos por ventana (default: 1 segundo)
+# comms.rate_telegram_max    = 30  # máximo de envíos por ventana
+
+# --- TELEGRAM BOT ---
+# telegram.bot_token = ""
+# telegram.webhook_secret = ""
+# telegram.bot_username = ""
+# telegram.binding_ttl_seconds = 60
+# telegram.pending_payload_ttl_seconds = 120
+# telegram.binding_cache_prefix = tmp_tg_sub_
+
+# --- FIREBASE CLOUD MESSAGING (Push) ---
+# comms.firebase_project_id       = ""
+# comms.firebase_credentials_file = writable/keys/firebase-service-account.json
+# comms.firebase_credentials_json = ""
+# comms.push_default_icon         = https://cdn-icons-png.flaticon.com/512/1827/1827392.png
+# comms.push_default_badge        = https://cdn-icons-png.flaticon.com/512/1827/1827392.png
+# comms.push_default_color        = #06b6d4
+
+# --- DISPATCHER (Outbox de Notificaciones) ---
+# comms.dispatch_batch       = 100   # registros por iteración de despacho
+# comms.dispatch_max_workers = 1     # workers daemon concurrentes permitidos (lock slots)
+# comms.base_backoff_seconds = 60    # base para retroceso exponencial en reintentos
+# comms.max_backoff_seconds  = 3600  # máximo de espera entre reintentos
+# comms.max_retries          = 3     # intentos antes de enviar a DLQ (status='4')
+
+#--------------------------------------------------------------------
+# CORS (Cross-Origin Resource Sharing)
+#--------------------------------------------------------------------
+
+# cors.default.allowedOrigins.0 = "https://app.tudominio.com"
+# cors.default.allowedOrigins.1 = "https://admin.tudominio.com"
+# cors.default.supportsCredentials = false
+# cors.default.maxAge = 7200
+
+

@@ -1,0 +1,172 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups"
+  body:
+    type: json
+    data: |-
+      {
+        "frequency_id": 1,
+        "contract_type_id": 1,
+        "name": "GRUPO SAM EK-EXPRESS #01",
+        "installment_amount": 50.00,
+        "installment_count": 24,
+        "participant_max": 24,
+        "frequency_base_date": "2026-10-15",
+        "status": "0",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("group_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Grupo SAM
+  
+  Registra un nuevo grupo de autofinanciamiento y ahorro colectivo (SAM) para la sucursal activa.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/financing/groups?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  frequency_id | integer | Requerido. Frecuencia activa existente. | Periodicidad de pago de cuotas (ej: mensual, quincenal).
+  contract_type_id | integer | Opcional. Tipo de contrato activo. | Modalidad legal del contrato formalizado.
+  name | string | Requerido. Máx: 40. Único. | Nombre identificador del grupo SAM.
+  installment_amount | decimal | Requerido. Mayor a 0. | Monto recurrente fijado para cada cuota.
+  installment_count | integer | Requerido. Entre 1 y 99. | Total de cuotas que componen el ciclo del grupo.
+  participant_max | integer | Opcional. Entre 1 y 255. | Capacidad máxima permitida de participantes.
+  frequency_base_date | string | Requerido. Formato fecha válido (YYYY-MM-DD). | Fecha base para el calendario de cobros y vencimientos.
+  status | string | Opcional. Valores: "0" (Formación), "1" (Activo), "2" (Cerrado). | Estado operativo del grupo SAM.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado de visibilidad (0: activo, 1: inhabilitado).
+  
+  > `branch_id` se asigna automáticamente desde el parámetro de sucursal `{{branch_id}}` de la URL.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "frequency_id": 1,
+    "contract_type_id": 1,
+    "name": "GRUPO SAM EK-EXPRESS #01",
+    "installment_amount": 50.00,
+    "installment_count": 24,
+    "participant_max": 24,
+    "frequency_base_date": "2026-10-15",
+    "status": "0",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../financing/groups?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "frequency_id": 1,
+      "contract_type_id": 1,
+      "name": "GRUPO SAM EK-EXPRESS #01",
+      "installment_amount": 50.00,
+      "installment_count": 24,
+      "participant_max": 24,
+      "frequency_base_date": "2026-10-15",
+      "status": "0",
+      "is_disabled": "0"
+    },
+    {
+      "frequency_id": 1,
+      "contract_type_id": 1,
+      "name": "GRUPO SAM HJ-COOL #01",
+      "installment_amount": 62.50,
+      "installment_count": 24,
+      "participant_max": 24,
+      "frequency_base_date": "2026-10-15",
+      "status": "0",
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El usuario debe poseer permiso sobre el módulo y alcance en la sucursal indicada en la URL (`scope=uri|3`).
+  2. El nombre del grupo `name` es único en el sistema.
+  3. `installment_count` debe multiplicarse congruentemente con la periodicidad para determinar el ciclo completo del grupo.
+  4. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "name": "El campo debe contener un valor único."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "name": "El campo debe contener un valor único."
+    }
+  }
+  ```

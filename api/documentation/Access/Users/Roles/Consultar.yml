@@ -1,0 +1,101 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/access/users/{{user_id}}/roles"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("role_entity_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Rol de Usuario
+  
+  Recupera un rol de usuario individual o un listado paginado y filtrado. Usa el motor de consultas.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/users/{{user_id}}/roles` (Lista) o `{{base_url}}/v1/access/users/{{user_id}}/roles/{{role_entity_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=acc_user_roles`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas (ver documentación general): `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+  
+  
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID del registro.
+  role_id | 0 | L, F, O | Rol asignado.
+  priority | 0 | L, F, O | Prioridad.
+  is_disabled | 0 | L, F, O | Estado.
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de modificación.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+  
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+  
+  ## ⚙️ Reglas de Negocio
+  1. La consulta devuelve exclusivamente los roles asociados al usuario especificado en la ruta.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": 1,
+        "role_id": 1,
+        "priority": 1
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```
+  
+  **✅ 200 OK (Individual)**
+  ```JSON
+  {
+    "data": {
+      "id": 1,
+      "role_id": 1,
+      "priority": 1
+    },
+    "in_trash": false
+  }
+  ```
+  
+  **❌ 404 Registro No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

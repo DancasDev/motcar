@@ -1,0 +1,91 @@
+info:
+  name: Contraseña
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/my/profile/password"
+  body:
+    type: json
+    data: |-
+      {
+        "password_current": "{{password}}",
+        "password_new": "PasswordNueva123*!"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const b = req.getBody();
+          const p = typeof b === 'string' ? JSON.parse(b)?.password_new : b?.password_new;
+          if (p) bru.setEnvVar("password", p);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Cambiar Contraseña del Perfil Propio
+
+  Permite al usuario autenticado cambiar su contraseña actual.
+  Si el usuario tiene la bandera `force_to = '0'` (cambio forzado de contraseña), esta acción la limpia a `null` y revoca tokens previos.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/profile/password`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:only_user,allow_forced=password_change`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `password_current` | `string` | Obligatorio. | Contraseña actual del usuario.
+  `password_new` | `string` | Obligatorio. Mín: 8, Máx: 30, mayúscula, minúscula, número y carácter especial. Distinta a la actual. | Nueva contraseña segura.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true,
+      "require_login": true
+    },
+    "messages": {
+      "success": "Contraseña actualizada exitosamente. Por favor, inicia sesión con tu nueva contraseña."
+    }
+  }
+  ```
+
+  **❌ 400 Bad Request — Contraseña Actual Inválida**
+  ```json
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "password_current": "La contraseña actual es incorrecta."
+    }
+  }
+  ```
+
+  **❌ 400 Bad Request — Contraseña Idéntica**
+  ```json
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "password_new": "La nueva contraseña debe ser diferente a la contraseña actual."
+    }
+  }
+  ```

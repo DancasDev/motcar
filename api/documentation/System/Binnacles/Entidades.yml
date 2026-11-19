@@ -1,0 +1,45 @@
+info:
+  name: Entidades
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/system/binnacles/from/entities"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Entidades Origen de Bitácora
+
+  Devuelve los tipos de entidad origen (`from_entity_type`) disponibles para las bitácoras, con su descripción en el idioma actual.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/binnacles/from/entities`
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=sys_binnacles`
+
+  ## ⚙️ Reglas de Negocio
+  1. Catálogo estático alimentado por las traducciones del módulo de bitácoras.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "data": [
+      { "id": "0", "description": "Rol" },
+      { "id": "1", "description": "Usuario" },
+      { "id": "2", "description": "Cliente" },
+      { "id": "3", "description": "API" }
+    ],
+    "count": 4,
+    "limit": 4,
+    "in_trash": false
+  }
+  ```

@@ -1,0 +1,137 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("participant_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Participante de Grupo SAM
+  
+  Recupera un participante individual o un listado paginado y filtrado de los suscriptores vinculados a un grupo SAM.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants` (Lista) o `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_participants`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas (ver documentación general): `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+  
+  ### Campos Disponibles
+  
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID de inscripción del participante.
+  branch_id | 0 | L, F, O | Identificador de la sucursal.
+  branch_name | 0 | L, F, O | Nombre de la sucursal (obtenido por relación).
+  san_group_id | 0 | L, F, O | Identificador del grupo SAM.
+  san_group_name | 0 | L, F, O | Nombre del grupo SAM (obtenido por relación).
+  client_id | 0 | L, F, O | Identificador de la persona suscriptora.
+  client_first_name | 0 | L, F, O | Nombre del cliente (obtenido por relación).
+  client_last_name | 0 | L, F, O | Apellido del cliente (obtenido por relación).
+  referrer_id | 0 | L, F, O | Identificador de la persona de referencia ($15).
+  referrer_first_name | 0 | L, F, O | Nombre del referente (obtenido por relación).
+  referrer_last_name | 0 | L, F, O | Apellido del referente (obtenido por relación).
+  frequency_id | 0 | L, F, O | Frecuencia de cobro específica.
+  frequency_code | 0 | L, F, O | Código de la frecuencia (obtenido por relación).
+  position | 0 | L, F, O | Posición o turno del suscriptor en el grupo.
+  frequency_base_date | 0 | L, F, O | Fecha base de vencimientos de cuotas.
+  installment_amount | 0 | L, F, O | Monto asignado por cuota.
+  installment_count | 0 | L, F, O | Total de cuotas acordadas.
+  status | 0 | L, F, O | Estado (0: Espera, 1: Activo, 2: Retirado, 3: Culminado).
+  is_overdue | 0 | L, F, O | Indicador de morosidad (0: solvente, 1: cuotas vencidas).
+  awarded_at | 0 | L, F, O | Fecha en que el participante resultó adjudicado.
+  benefit_metadata | 0 | L, F, O | Especificaciones del vehículo / bien.
+  is_disabled | 0 | L, F, O | Estado (0: activo, 1: inhabilitado).
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de modificación.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+  
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+  
+  ## ⚙️ Reglas de Negocio
+  1. Los resultados se restringen de forma automática al grupo SAM y a la sucursal indicada en los parámetros de la URL.
+  2. Los datos de la persona suscriptora, asesor, grupo y frecuencia se resuelven mediante el motor de consultas sin necesidad de peticiones adicionales.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": "1",
+        "san_group_id": "1",
+        "client_id": "1",
+        "client_first_name": "Carlos",
+        "client_last_name": "Pérez",
+        "position": "1",
+        "status": "1",
+        "is_overdue": "0",
+        "awarded_at": null,
+        "is_disabled": "0"
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```
+  
+  **✅ 200 OK (Individual)**
+  ```JSON
+  {
+    "data": {
+      "id": "1",
+      "san_group_id": "1",
+      "client_id": "1",
+      "client_first_name": "Carlos",
+      "client_last_name": "Pérez",
+      "position": "1",
+      "status": "1",
+      "is_overdue": "0",
+      "awarded_at": null,
+      "benefit_metadata": {
+        "vehicle_model": "EK-Express 150cc",
+        "color": "Rojo"
+      },
+      "is_disabled": "0"
+    },
+    "in_trash": false
+  }
+  ```
+  
+  **❌ 404 Registro No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

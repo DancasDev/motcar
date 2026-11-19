@@ -1,0 +1,65 @@
+info:
+  name: Refrescar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/auth/user"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const body = res.getBody();
+          if (body?.data?.token) {
+            bru.setEnvVar("jwt_token", body.data.token);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Renovar Sesión de Usuario
+
+  Renueva el token JWT de la sesión actual antes de que expire.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/user`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:only_user,allow_forced=*`
+
+  ## ⚙️ Reglas de Negocio
+  1. **Intervalo de renovación:** el intervalo mínimo para renovar es parametrizable (por lo general **10 minutos**). Si se intenta antes → `400 AUTH_TOKEN_UPDATE_INVALID`.
+  2. El nuevo token reemplaza al anterior; una vez renovado exitosamente, el token anterior queda invalidado.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "expires_at": 1790555994,
+      "refresh_at": 1790555994
+    }
+  }
+  ```
+
+  **❌ 400 Cooldown No Cumplido**
+  ```JSON
+  {
+    "status": 400,
+    "error": "AUTH_TOKEN_UPDATE_INVALID",
+    "messages": {
+      "error": "Deben pasar 10 minutos antes de renovar el token."
+    }
+  }
+  ```

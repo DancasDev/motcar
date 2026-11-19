@@ -1,0 +1,113 @@
+info:
+  name: EstadoCuenta
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/reports/statement"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Estado de Cuenta (Cartola) del Participante
+
+  Genera el balance individual y la cartola cronológica de cuotas y recibos aplicados a un suscriptor SAM, ideal para comprobantes de pago o envío de estado de cuenta vía WhatsApp.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}/reports/statement`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups`
+  - **Límite**: no aplica
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo. La sucursal (`branch_id`), el grupo (`group_id`) y el participante (`participant_id`) se transmiten en la URL.
+
+  ## ⚙️ Reglas de Negocio
+  1. Consolida la ficha completa del participante con su posición, grupo, monto y cantidad de cuotas.
+  2. Muestra a quien refirió al cliente (`referrer`) con su número telefónico.
+  3. Resume las cifras globales: total comprometido, total recaudado, saldo deudor, cuotas pagadas vs pendientes y saldo en mora.
+  4. Lista cronológicamente las cuotas pactadas, vinculando a cada cuota pagada su número de recibo oficial (`receipt_code`), fecha de cobro y cuenta receptora de fondos.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "participant": {
+        "id": 1,
+        "group_id": 1,
+        "group_name": "GRUPO A",
+        "position": 1,
+        "status": "1",
+        "is_overdue": false,
+        "is_awarded": false,
+        "awarded_at": null,
+        "benefit_metadata": null,
+        "installment_amount": 57.73,
+        "installment_count": 22
+      },
+      "client": {
+        "id": 12,
+        "name": "Antony Gonto",
+        "identification_type": "0",
+        "identification_value": "V12345678",
+        "phone": "04141234567"
+      },
+      "referrer": {
+        "id": 2,
+        "name": "Valery Motcar",
+        "phone": "0414-0000000"
+      },
+      "summary": {
+        "total_committed": 1270.06,
+        "total_collected": 635.0,
+        "total_pending": 635.06,
+        "installments_total": 22,
+        "installments_paid": 10,
+        "installments_pending": 12,
+        "installments_overdue": 0,
+        "overdue_amount": 0.0
+      },
+      "installments": [
+        {
+          "id": 1,
+          "description": "Cuota 1 - GRUPO A",
+          "due_date": "2025-06-30",
+          "total_amount": 57.73,
+          "paid_amount": 57.73,
+          "pending_amount": 0.0,
+          "status": "2",
+          "is_overdue": false,
+          "payments": [
+            {
+              "receipt_code": "REC-SAM-GRUPOA-01",
+              "receipt_date": "2025-06-30",
+              "applied_amount": 57.73,
+              "account_name": "Caja de Apertura SAM"
+            }
+          ]
+        }
+      ]
+    }
+  }
+  ```
+
+  **❌ 404 Not Found**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "Registro no encontrado"
+    }
+  }
+  ```

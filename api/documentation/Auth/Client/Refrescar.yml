@@ -1,0 +1,53 @@
+info:
+  name: Refrescar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/auth/client"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201 || res.getStatus() === 200) {
+          const body = res.getBody();
+          if (body?.data?.token) {
+            bru.setEnvVar("jwt_token", body.data.token);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Renovar Sesión de Cliente
+
+  Renueva el token JWT de la sesión del cliente autenticado antes de que expire.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/client`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:only_client`
+
+  ## ⚙️ Reglas de Negocio
+  1. **Intervalo de renovación:** el intervalo mínimo para renovar es parametrizable (por lo general **10 minutos**). Si se intenta antes → `400 AUTH_TOKEN_UPDATE_INVALID`.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "expires_at": 1790555994,
+      "refresh_at": 1790555994
+    }
+  }
+  ```

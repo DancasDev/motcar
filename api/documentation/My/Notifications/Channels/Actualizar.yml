@@ -1,0 +1,52 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/my/notifications/channels"
+  body:
+    type: json
+    data: |-
+      {
+        "notification_channels": ["1"]
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Canales de Notificación
+
+  Modifica los canales de notificación activos del usuario autenticado.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications/channels`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:only_user`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `notification_channels` | `array\|string` | Canales: `1` (Email), `2` (Push). | Lista de canales habilitados.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "status": 200,
+    "error": null,
+    "messages": {
+      "success": "Canales de notificación actualizados correctamente."
+    }
+  }
+  ```

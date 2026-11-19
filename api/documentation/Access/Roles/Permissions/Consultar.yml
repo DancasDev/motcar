@@ -1,0 +1,116 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/access/roles/{{role_id}}/permissions"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("permission_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Permiso de Rol
+
+  Recupera un permiso de rol individual o un listado paginado y filtrado. Usa el motor de consultas.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/roles/{{role_id}}/permissions` (Lista) o `{{base_url}}/v1/access/roles/{{role_id}}/permissions/{{permission_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=acc_role_permissions`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas (ver documentación general): `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID del permiso.
+  module_id | 0 | L, F, O | ID del módulo.
+  module_code | 0 | L, F, O | Código del módulo.
+  module_name | 0 | L, F, O | Nombre del módulo (calculado, según idioma).
+  feature | 0 | L, F, O | Bitmask de características.
+  level | 0 | L, F, O | Nivel.
+  payload | 0 | L, F, O | Carga útil del permiso.
+  is_disabled | 0 | L, F, O | Estado.
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de modificación.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## ⚙️ Reglas de Negocio
+  1. La consulta devuelve exclusivamente los permisos asignados al rol especificado en la ruta.
+  2. `module_name` es un campo calculado que devuelve el nombre localizado del módulo.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Listado)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": 1,
+        "module_id": 12,
+        "module_code": "storage",
+        "module_name": "Almacenamiento",
+        "feature": 63,
+        "level": "2",
+        "payload": null,
+        "is_disabled": "0"
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```
+
+  **✅ 200 OK (Individual)**
+  ```JSON
+  {
+    "data": {
+      "id": 1,
+      "module_id": 12,
+      "module_code": "storage",
+      "module_name": "Almacenamiento",
+      "feature": 63,
+      "level": "2",
+      "payload": null,
+      "is_disabled": "0"
+    },
+    "in_trash": false
+  }
+  ```
+
+  **❌ 404 Registro No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

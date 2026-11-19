@@ -1,0 +1,142 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/access/clients/{{client_id}}/roles/{{role_entity_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "priority": 2,
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Rol de Cliente
+  
+  Modifica una o varias asignaciones de rol del cliente existentes.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/clients/{{client_id}}/roles/{{role_entity_id}}` (Individual) o `{{base_url}}/v1/access/clients/{{client_id}}/roles` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=acc_client_roles,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  priority | integer | Opcional. | Nueva prioridad.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "priority": 2,
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/access/clients/{{client_id}}/roles`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 10,
+      "priority": 2
+    },
+    {
+      "id": 11,
+      "priority": 2
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El rol (`role_id`) y la asignación al cliente no son modificables tras la creación; solo se pueden editar `priority` e `is_disabled`.
+  2. No se permite asignar el mismo rol más de una vez a un cliente.
+  3. **Actualización parcial:** solo se modifican los campos enviados en el cuerpo de la petición.
+  4. **Actualización masiva:** se habilita cuando no se envía identificador en la URL; cada objeto en el array debe incluir su `id`.
+  5. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 10,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 10,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "priority": "El campo debe contener un valor único."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "priority": "El campo es obligatorio."
+    }
+  }
+  ```

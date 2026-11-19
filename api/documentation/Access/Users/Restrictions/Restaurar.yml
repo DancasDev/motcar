@@ -1,0 +1,107 @@
+info:
+  name: Restaurar
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{base_url}}/v1/access/users/{{user_id}}/restrictions/{{restriction_id}}"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Restaurar Restricción de Usuario
+  
+  Restaura una o varias restricciones de usuario previamente eliminadas (soft delete).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/users/{{user_id}}/restrictions/{{restriction_id}}` (Individual) o `{{base_url}}/v1/access/users/{{user_id}}/restrictions` (Masivo)
+  - **Método**: `PATCH`
+  - **Filtros**: `auth:module_code=acc_user_restrictions,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  
+  **Ejemplo Masivo (vía `/v1/access/users/{{user_id}}/restrictions`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 10
+    },
+    {
+      "id": 11
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Limpia `deleted_at` y reactiva el registro.
+  2. **Restauración masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  3. Si el registro no existe o no está en la papelera → `200` con `affected: false`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Restaurado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 10,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro restaurado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (No estaba en papelera)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 10,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro restaurado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```

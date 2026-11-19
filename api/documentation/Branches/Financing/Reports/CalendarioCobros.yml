@@ -1,0 +1,93 @@
+info:
+  name: CalendarioCobros
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/reports/collection-calendar?start_date=2026-03-01&end_date=2026-03-31"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Calendario de Proyección de Cobranzas
+
+  Proyecta y agrupa los vencimientos de cuotas por fecha para un período dado (quincena, mes o rango libre), entregando el total esperado a recaudar por día y el listado de clientes a cobrar.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/reports/collection-calendar`
+  - **Método**: `GET`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_groups`
+  - **Parámetros de Consulta (Query Params)**:
+    - `start_date` *(opcional, fecha YYYY-MM-DD)*: Fecha inicial del período (por defecto: primer día del mes en curso).
+    - `end_date` *(opcional, fecha YYYY-MM-DD)*: Fecha final del período (por defecto: último día del mes en curso).
+    - `group_id` *(opcional, entero)*: Filtra los cobros de un grupo SAM en particular.
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo. Parámetros vía query string.
+
+  ## ⚙️ Reglas de Negocio
+  1. Consulta todas las cuotas de la cartera de la sucursal cuyo `due_date` se encuentre dentro del rango indicado.
+  2. Totaliza a nivel del período: monto total proyectado (`total_expected`), monto ya recaudado (`total_collected`), saldo pendiente y conteo de cuotas pagadas vs pendientes.
+  3. Estructura un diccionario `days` indexado por fecha (`YYYY-MM-DD`) con los subtotales del día y el listado de obligaciones a cobrar, optimizado para componentes de calendario UI.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "period": {
+        "start_date": "2026-03-01",
+        "end_date": "2026-03-31"
+      },
+      "summary": {
+        "total_expected": 15400.0,
+        "total_collected": 9240.0,
+        "total_pending": 6160.0,
+        "installments_total": 280,
+        "installments_paid": 168,
+        "installments_pending": 112
+      },
+      "days": {
+        "2026-03-15": {
+          "date": "2026-03-15",
+          "count": 28,
+          "total_expected": 1540.0,
+          "total_collected": 1100.0,
+          "total_pending": 440.0,
+          "items": [
+            {
+              "receivable_id": 412,
+              "participant_id": 18,
+              "group_id": 2,
+              "group_name": "GRUPO B",
+              "position": 3,
+              "description": "Cuota 6 - GRUPO B",
+              "total_amount": 55.0,
+              "paid_amount": 55.0,
+              "pending_amount": 0.0,
+              "status": "2",
+              "client": {
+                "id": 45,
+                "name": "María González",
+                "phone": "04241234567"
+              },
+              "referrer": {
+                "name": "Maria Motcar",
+                "phone": "0414-0000000"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+  ```

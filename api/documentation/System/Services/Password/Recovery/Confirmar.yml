@@ -1,0 +1,92 @@
+info:
+  name: Confirmar
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/system/services/password/recovery"
+  body:
+    type: json
+    data: |-
+      {
+        "verification_id": "{{verification_id}}",
+        "password": "NuevaPassword_123"
+      }
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Confirmar Recuperación de Contraseña
+
+  Confirma la solicitud de recuperación validando el `verification_id` y establece la nueva contraseña. Requiere el header de OTP emitido por el sistema (filtro `otp`).
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/services/password/recovery`
+  - **Método**: `PUT`
+  - **Filtros**: `otp:action=password_recovery`
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `verification_id` | `integer` | Requerido. | ID devuelto en el paso de solicitud.
+  `password` | `string` | Requerido. Mín: 8, Máx: 30. Robusta (mayúscula, minúscula, número y especial). | Nueva contraseña.
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "verification_id": 12,
+    "password": "NuevaPassword_123"
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. La contraseña nueva debe cumplir la política de complejidad.
+  2. El `verification_id` debe existir y no estar expirado; si no → `400 OTP_RECORD_NOT_FOUND`.
+  3. Si el usuario ya no existe → `400 SERVICE_PASSWORD_RECOVERY_USER_NOT_FOUND`.
+  4. Tras confirmar, el OTP se invalida.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "user_id": 1
+    },
+    "messages": {
+      "success": "La contraseña ha sido restablecida exitosamente."
+    }
+  }
+  ```
+
+  **❌ 400 Sin Verification ID**
+  ```JSON
+  {
+    "status": 400,
+    "error": "OTP_INPUT_REQUIRED",
+    "messages": {
+      "error": "El código de verificación es requerido."
+    }
+  }
+  ```
+
+  **❌ 400 OTP No Válido**
+  ```JSON
+  {
+    "status": 400,
+    "error": "OTP_RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El código de verificación no existe."
+    }
+  }
+  ```

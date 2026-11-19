@@ -1,0 +1,481 @@
+opencollection: 1.0.0
+
+info:
+  name: php-api
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  headers:
+    - name: Accept-Language
+      value: "{{lang}}"
+  auth:
+    type: bearer
+    token: "{{jwt_token}}"
+  variables:
+    - name: base_url
+      value: ""
+    - name: jwt_token
+      value: ""
+    - name: username
+      value: ""
+    - name: password
+      value: ""
+    - name: lang
+      value: es
+    - name: user_id
+      value: ""
+    - name: role_id
+      value: ""
+    - name: client_id
+      value: ""
+    - name: client_secret
+      value: ""
+    - name: module_id
+      value: "1"
+    - name: module_category_id
+      value: "1"
+    - name: permission_id
+      value: ""
+    - name: restriction_id
+      value: ""
+    - name: role_entity_id
+      value: ""
+    - name: branch_id
+      value: ""
+    - name: country_id
+      value: "1"
+    - name: language_id
+      value: "1"
+    - name: time_zone_id
+      value: "1"
+    - name: document_type_id
+      value: "1"
+    - name: notification_type_id
+      value: "1"
+    - name: locker_id
+      value: ""
+    - name: locker_key
+      value: images/users/profiles
+    - name: field_type_id
+      value: "1"
+    - name: rule_id
+      value: "1"
+    - name: verification_id
+      value: ""
+    - name: action_token
+      value: ""
+    - name: telegram_webhook_secret
+      value: ""
+    - name: binnacle_id
+      value: ""
+    - name: currency_id
+      value: ""
+    - name: exchange_rate_id
+      value: ""
+    - name: payment_account_category_id
+      value: ""
+    - name: payment_account_id
+      value: ""
+    - name: receivable_concept_id
+      value: ""
+    - name: contract_type_id
+      value: ""
+    - name: frequency_id
+      value: ""
+    - name: note_category_id
+      value: ""
+    - name: group_id
+      value: ""
+    - name: participant_id
+      value: ""
+    - name: participant_note_id
+      value: ""
+    - name: contract_document_id
+      value: ""
+    - name: receivable_id
+      value: ""
+    - name: receipt_id
+      value: ""
+    - name: receipt_item_id
+      value: ""
+    - name: receipt_payment_id
+      value: ""
+    - name: credit_id
+      value: ""
+
+docs:
+  content: |-
+    # PHP API RESTFUL STATELESS V1
+
+    Documentación técnica general de la API. Define los estándares de comunicación, seguridad, consultas y manejo de datos que rigen **todos** los endpoints de la colección. La documentación específica de cada endpoint solo describe lo particular de ese recurso; lo general vive aquí.
+
+    ---
+
+    ## 📌 1. Información General
+
+    * **Base URL:** `{{base_url}}/v1`
+    * **Formato de Respuesta:** `application/json` (UTF-8). La API responde siempre en JSON.
+    * **Versionado:** El prefijo `/v1/` es obligatorio.
+    * **Negociación de Idioma:** Los mensajes de error y éxito se traducen según el header `Accept-Language`. Idiomas soportados: `es` (por defecto) y `en`.
+    * **Fechas en UTC:** todos los campos de fecha/hora se reciben y devuelven en **UTC** (`YYYY-MM-DD HH:MM:SS`), sin ajuste de zona horaria. La conversión a la zona horaria local es responsabilidad del cliente.
+    * **Method Override:** si la API se despliega en un servidor que no admite verbos distintos de `POST` (ej: `PUT`, `PATCH`, `DELETE`), puede enviar un `POST` incluyendo el header `Method-Override` con el verbo real (ej: `Method-Override: PUT`) para mitigar esa limitación del servidor.
+
+    ---
+
+    ## 🔐 2. Autenticación y Seguridad
+
+    La API usa **JSON Web Tokens (JWT)**. Todas las rutas (salvo `POST /v1/auth/*` y `POST /v1/system/services/password/recovery`) requieren el header:
+
+    ```
+    Authorization: Bearer {{jwt_token}}
+    ```
+
+    ### Tipos de Entidad (`subt`)
+    | `subt` | Tipo | Descripción |
+    | :--- | :--- | :--- |
+    | `1` | Usuario | Sesión de usuario final (login manual). |
+    | `2` | Cliente | Sesión de cliente API (login con `client_id`/`client_secret`). |
+
+    ### Rutas restringidas por tipo
+    * Filtros con `only_user`: requieren token de **usuario** (`subt: 1`). Con token de cliente → `AUTH_ONLY_USER` (401).
+    * Filtros con `only_client`: requieren token de **cliente** (`subt: 2`). Con token de usuario → `AUTH_ONLY_CLIENT` (401).
+    * Rutas **compartidas** (solo lectura de catálogos y módulos otorgados): aceptan ambos tipos.
+
+    ### Ciclo de Vida del Token
+    Todos los tiempos son **parametrizables** por configuración; a continuación se indican los valores generales:
+    * **Usuario:** expira en **45 minutos** (2700s).
+    * **Cliente:** expira en **3 horas** (10800s).
+    * **Refresh:** `PUT /v1/auth/user` o `PUT /v1/auth/client` renueva el token. El intervalo mínimo para renovar también es parametrizable; por lo general será de **10 minutos** (600s). Si se intenta antes → `AUTH_TOKEN_UPDATE_INVALID` (400).
+    * **Blacklist:** `DELETE /v1/auth/user`, `PUT /v1/auth/user`, `DELETE /v1/auth/client` o `PUT /v1/auth/client` invalida el token de forma permanente.
+
+    ### Auditoría de Seguridad
+    El token está vinculado a la huella del dispositivo. La API rechaza el acceso (`AUTH_TOKEN_IS_REFUSED`) si cambia la **IP** (en clientes) o el **User-Agent** respecto al token emitido.
+
+    ### Límite de Intentos Fallidos
+    * Ambos valores son **parametrizables**; por lo general: máximo **3** intentos fallidos en un lapso de **1 día** (86400s).
+    * El contador se **reinicia** una vez transcurrido el lapso sin nuevos intentos fallidos.
+    * Al superarse el límite → `AUTH_USER_ATTEMPTS_EXCEEDED` / `AUTH_CLIENT_ATTEMPTS_EXCEEDED` (403).
+
+    ---
+
+    ## 📍 3. Sucursales (árbol jerárquico)
+
+    La aplicación es **single-tenant**: existe una sola empresa y sus sucursales se organizan en un **árbol jerárquico** (estructura autorreferente vía `parent_id`).
+
+    * **Catálogo:** `GET /v1/branches` (listado plano) y `GET /v1/branches/tree` (mapa completo del árbol: breadcrumbs, conteos y herencia de estado).
+    * **Jerarquía:** `parent_id = null` indica la raíz; cada sucursal puede tener hijas ilimitadas.
+    * **Unicidad:** `name` debe ser único entre hermanas (clave compuesta `parent_id + name`).
+    * **Integridad del árbol:** `parent_id` debe existir y estar activa; no se permiten ciclos (mover una sucursal bajo su propio descendiente → `400`).
+    * **`scope_path`:** el alcance de permisos/restricciones se expresa como ruta de sucursales del árbol (ej: `1`, `1/2`, `1/*`); cada componente debe existir y ser contiguo. Ver sección de permisos.
+    * **Borrado físico:** `DELETE` con `In-Trash: true` solo se permite en sucursales **sin hijas**; en caso contrario → `400`.
+
+    ---
+
+    ## 🔑 4. Permisos y restricciones
+
+    ### 4.1. Permisos
+
+    Un permiso se modela como **sujeto → recurso**:
+
+    - **Sujeto:** El rol, usuario o cliente gestionado, determinado automáticamente a partir del endpoint y recurso invocado (no se envía en el body).
+    - **Recurso:** `module_id`, módulo al que se otorga el permiso.
+    - **Alcance:** `scope_path` (`*` global, o ruta de sucursales `1`, `1/2`, `1/*`). Por defecto `*`; si se indica una ruta, cada componente debe existir y ser contiguo en el árbol de sucursales.
+    - **Características:** `feature`, un bitmask donde cada bit es una acción (ver tabla siguiente).
+
+    #### 4.1.1. Bitmask `feature`
+    | Bit | Valor | Característica |
+    | :--- | :--- | :--- |
+    | 1 | 1 | Crear |
+    | 2 | 2 | Leer |
+    | 3 | 4 | Actualizar |
+    | 4 | 8 | Eliminar |
+    | 5 | 16 | Papelera |
+    | 6 | 32 | Modo desarrollo |
+
+    Las características se combinan **sumando** sus valores (ej: `3` = Crear + Leer; `63` = todas).
+
+    #### 4.1.2. Resolución de permisos
+    * Los permisos **directos** del sujeto tienen prioridad sobre los **heredados de roles**.
+    * El alcance se resuelve por `scope_path`: coincidencia **exacta** > wildcard `prefijo/*` (el más específico/profundo gana) > `*`.
+    * Los módulos en modo desarrollo (`is_developing=1`) exigen el bit `32` (desarrollo) en el permiso; en caso contrario → `AUTH_PERMISSION_MODULE_IS_DEVELOPING`.
+
+    ### 4.2. Restricciones
+
+    Al igual que los permisos, una restricción pertenece a un **sujeto** (rol, usuario o cliente, asignado automáticamente por el endpoint invocado) y un **alcance** (`scope_path`). Cada restricción combina un `type`, una `rule` y un `config` (JSON). Las restricciones se evalúan **junto con los permisos** en cada petición; si no se cumple la regla, la API responde con el error correspondiente (p. ej. `AUTH_RESTRICTION_IP_ALLOW_FAIL`).
+
+    #### 4.2.1. Reglas y `config` por tipo
+    | Tipo | Reglas | `config` (JSON) |
+    | :--- | :--- | :--- |
+    | `date` | `before`, `after` | `{"d": "YYYY-MM-DD"}` — fecha límite (antes de) / fecha desde (después de) |
+    | `date` | `in_range`, `out_range` | `{"sd": "YYYY-MM-DD", "ed": "YYYY-MM-DD"}` — rango permitido / rango prohibido |
+    | `date` | `by_day` | `{"d": ["0".."6"]}` — días de la semana permitidos (`0`=Domingo … `6`=Sábado) |
+    | `ip` | `allow`, `deny` | `{"list": ["IP o CIDR"]}` — lista blanca / lista negra |
+    | `domain` | `allow`, `deny` | `{"list": ["dominio"]}` — lista blanca / lista negra |
+
+    > Las fechas de `date` aceptan los placeholders `%Y`, `%M` y `%D` (año, mes y día actuales) para reglas relativas.
+
+    > Los campos del body para crear/actualizar permisos y restricciones se documentan en los endpoints correspondientes de cada recurso.
+
+    ---
+
+    ## 🔍 5. Motor de Consultas (DQB)
+
+    En peticiones `GET`, el resultado se puede personalizar con los siguientes *query parameters*:
+
+    | Parámetro | Tipo | Descripción |
+    | :--- | :--- | :--- |
+    | `fields` | `string` | Campos a devolver separados por comas (ej: `id,username,email`). `*` = todos. |
+    | `filters` | `json` | Filtros (ver formato y ejemplos más abajo). |
+    | `order` | `json` | Ordenamiento. Objeto `{"campo":"ASC"}` o `{"campo":"DESC"}`. Múltiples: `{"campo1":"DESC","campo2":"ASC"}`. |
+    | `page` | `integer` | Página de resultados (por defecto `1`). |
+    | `itemsPerPage` | `integer` | Registros por página. Por defecto **25**, se puede ajustar siempre y cuando se respete el tope maximo de cada endpoint. |
+    | `groupBy` | `string` | Campos de agrupación separados por comas. |
+    | `having` | `json` | Igual que `filters`, pero aplica sobre grupos (`GROUP BY ... HAVING`). |
+
+    > **Nota:** `groupBy`, `having` y funciones de agregación solo están habilitados en endpoints que lo permiten; en el resto se ignoran o se rechazan.
+
+    ### Formato de `filters`
+
+    Cada filtro es un arreglo de hasta 5 posiciones:
+
+    | Índice | Concepto | Valores | Por defecto |
+    | :--- | :--- | :--- | :--- |
+    | `0` | Campo | Nombre del campo (obligatorio) | — |
+    | `1` | Valor | string, integer, float, bool o null | `null` |
+    | `2` | Operador relacional | `=`, `!=`, `>`, `>=`, `<`, `<=`, `LIKE` | `=` |
+    | `3` | Operador lógico (con el anterior filtro) | `AND`, `OR` | `AND` |
+    | `4` | Formato de coincidencia (solo con `LIKE`) | `BOTH`, `BEFORE`, `AFTER` | `BOTH` |
+
+    **Equivalencias SQL de ejemplo:**
+
+    | Filtro | SQL equivalente |
+    | :--- | :--- |
+    | `["username","admin"]` | `username = 'admin'` |
+    | `["created_at","2024-01-01",">"]` | `created_at > '2024-01-01'` |
+    | `["first_name","daniel","LIKE","AND","BOTH"]` | `first_name LIKE '%daniel%'` |
+    | `["first_name","daniel","LIKE","AND","BEFORE"]` | `first_name LIKE '%daniel'` |
+    | `["email",null,"!="]` | `email IS NOT NULL` |
+
+    ### Cómo funcionan las agrupaciones (`group` / `orGroup`)
+
+    `filters` acepta dos estructuras:
+
+    1. **Lista simple** `[[f1],[f2],...]`: se combinan según el operador lógico de cada filtro (por defecto `AND`).
+    2. **Objeto con grupos**: `group` y `orGroup` actúan como **paréntesis** en SQL. El prefijo define cómo se une el bloque con la condición anterior (`group` = `AND`, `orGroup` = `OR`).
+
+    **Ejemplos prácticos:**
+
+    #### Filtros sin grupos (Listas planas con operadores lógicos)
+
+    ```bash
+    # 1. Búsqueda con operadores mixtos (AND y OR combinados secuencialmente)
+    ?filters=[["role","admin"],["status","active","=","OR"]]
+    # SQL: WHERE role = 'admin' OR status = 'active'
+
+    # 2. Filtrado por múltiples condiciones excluyentes
+    ?filters=[["country_id","1"],["country_id","2","=","OR"],["country_id","3","=","OR"]]
+    # SQL: WHERE country_id = '1' OR country_id = '2' OR country_id = '3'
+
+    # 3. Combinación de rango con alternativa opcional
+    ?filters=[["created_at","2024-01-01",">="],["is_disabled","1","=","OR"]]
+    # SQL: WHERE created_at >= '2024-01-01' OR is_disabled = '1'
+    ```
+
+    #### Filtros con grupos (Uso de paréntesis y bloques lógicos)
+
+    ```bash
+    # 1. Filtrado base obligatorio con alternativa de búsqueda por nombre (OR dentro de un AND principal)
+    ?filters=[["is_disabled","0"],{"orGroup0":[["first_name","daniel"],["first_name","carlos","=","OR"]]}]
+    # SQL: WHERE is_disabled = '0' OR (first_name = 'daniel' OR first_name = 'carlos')
+
+    # 2. Condición principal estricta con subgrupo de exclusión o alternativas múltiples
+    ?filters=[["role","user"],{"group1":[["country_id","1"],["city_id","5","=","OR"]]}]
+    # SQL: WHERE role = 'user' AND (country_id = '1' OR city_id = '5')
+
+    # 3. Grupos anidados complejos (mezcla de filtros planos y bloques agrupados)
+    ?filters=[["is_deleted","0"],{"group0":[["role","admin"],{"orGroup1":[["department","IT"],["department","HR","=","OR"]]}]}]
+    # SQL: WHERE is_deleted = '0' AND (role = 'admin' OR (department = 'IT' OR department = 'HR'))
+    ```
+
+    > El máximo de filtros por petición está limitado (20 por defecto, parametrizable). Superarlo → error del motor de consultas.
+
+    ---
+
+    ## 🗑 6. Gestión de Papelera (Soft Delete)
+
+    * **Eliminar** (`DELETE`) realiza un borrado lógico: registra la fecha en `deleted_at`. El registro desaparece de las consultas estándar.
+    * **Restaurar** (`PATCH`) limpia `deleted_at` y reactiva el registro.
+    * **Clave compuesta y papelera:** los registros con clave compuesta (permisos, restricciones, roles de entidad, etc.) que están en la papelera **siguen reservando** esa combinación: no se puede crear un registro con la misma clave mientras exista el eliminado. Para reutilizarla, restaure el registro (`PATCH`) o elimínelo físicamente (`DELETE` con `In-Trash: true`).
+    * **Eliminación permanente:** enviando el header `In-Trash: true` al eliminar, el registro se borra **físicamente** de la base de datos. Esto solo es posible si el registro no tiene dependencias en otras tablas; en caso contrario se rechaza por integridad referencial.
+    * **Consultar papelera:** header `In-Trash: true` para listar eliminados o consultar un ID que está en la papelera (requiere acceso a la papelera).
+    * Consultar un ID inexistente o en papelera sin `In-Trash` → `404 RECORD_NOT_FOUND`.
+
+    ---
+
+    ## 📦 7. Formatos de Respuesta
+
+    ### 6.1. Lectura (GET)
+
+    **Individual:**
+    ```json
+    {
+      "data": { "id": "1", "username": "Admin123" },
+      "in_trash": false
+    }
+    ```
+
+    **Masiva (listado):**
+    ```json
+    {
+      "data": [ { "id": "1", "username": "Admin123" } ],
+      "count": 1,
+      "limit": 25,
+      "in_trash": false
+    }
+    ```
+
+    ### 6.2. Escritura (POST, PUT, PATCH, DELETE)
+
+    **Individual** (201 crear / 200 actualizar, eliminar, restaurar):
+    ```json
+    {
+      "status": 201,
+      "data": { "id": 10, "affected": true },
+      "messages": { "success": "Registro creado exitosamente." }
+    }
+    ```
+    * `affected: true` → se aplicó el cambio. `affected: false` → el registro no existía o no se modificó (200 con "No se realizaron cambios porque los datos ya estaban actualizados.").
+
+    **Procesamiento por lotes (batch):**
+    * **En `POST` (crear):** se activa con `?is_batch=true` en la URL; el cuerpo es un arreglo de registros. Sin ese parámetro se procesa un solo registro.
+    * **En `PUT`, `PATCH` y `DELETE`:** el modo masivo se deduce **omitiendo el id en la URL** (petición a la colección, ej: `PUT /v1/access/users`); el cuerpo es un arreglo de registros y cada uno debe incluir su `id`. Si se incluye el id en la URL, se procesa un solo registro.
+    * **200/201:** si todos los ítems tuvieron el mismo resultado exitoso.
+    * **207 Multi-Status:** si hubo resultados mixtos; cada ítem detalla su propio resultado.
+
+    ```json
+    {
+      "status": 207,
+      "data": [
+        { "status": 201, "data": { "id": 37 } },
+        { "status": 400, "error": "FAIL_VALIDATION", "messages": { "email": "El campo debe contener un valor único." } }
+      ],
+      "limit": 100,
+      "affected": 1
+    }
+    ```
+
+    **Límites de lote:** el número máximo de ítems por petición está acotado y es **parametrizable por endpoint**; por lo general es **100**, aunque algunos endpoints lo limitan distinto (ej: lockers → 1). Excederlo → `INPUT_LIMIT_EXCEEDED` (400).
+
+    ---
+
+    ## 🚩 8. Diccionario de Errores
+
+    Todos los errores usan esta estructura:
+    ```json
+    {
+      "status": 401,
+      "error": "AUTH_TOKEN_IS_EXPIRED",
+      "messages": { "error": "..." }
+    }
+    ```
+    En `FAIL_VALIDATION`, `messages` detalla cada campo fallido.
+
+    ### Autenticación y Permisos
+    | Código | HTTP | Descripción |
+    | :--- | :--- | :--- |
+    | `AUTH_TOKEN_IS_REQUIRED` | 400 | No se envió el token en `Authorization`. |
+    | `AUTH_TOKEN_IS_INVALID` | 401 | Token con formato incorrecto o firma inválida. |
+    | `AUTH_TOKEN_IS_EXPIRED` | 401 | El token ha caducado. |
+    | `AUTH_TOKEN_IS_DISABLED` | 401 | El token está en la blacklist (logout). |
+    | `AUTH_TOKEN_IS_REFUSED` | 401 | El token se usa desde un entorno distinto (IP/User-Agent). |
+    | `AUTH_TOKEN_UPDATE_INVALID` | 400 | No se puede renovar aún (intervalo mínimo de renovación no cumplido). |
+    | `AUTH_ONLY_USER` | 401 | Ruta reservada para tokens de usuario. |
+    | `AUTH_ONLY_CLIENT` | 401 | Ruta reservada para tokens de cliente. |
+    | `AUTH_USER_COMBINATION_NOT_FOUND` | 401 | Credenciales de usuario incorrectas. |
+    | `AUTH_USER_ATTEMPTS_EXCEEDED` | 403 | Límite de intentos de usuario superado. |
+    | `AUTH_CLIENT_ATTEMPTS_EXCEEDED` | 403 | Límite de intentos de cliente superado. |
+    | `AUTH_PERMISSION_REFUSED` | 403 | Sin permiso sobre el módulo. |
+    | `AUTH_BRANCH_NOT_AVAILABLE` | 401 | La sucursal solicitada no está disponible para el alcance. |
+
+    ### Consultas (DQB) y Procesamiento
+    | Código | HTTP | Descripción |
+    | :--- | :--- | :--- |
+    | `FAIL_VALIDATION` | 400 | Uno o más campos no cumplen las reglas. |
+    | `RECORD_NOT_FOUND` | 404 | El registro no existe o está en la papelera. |
+    | `UPDATE_EMPTY_ITEM` | 400 | Se intentó actualizar sin enviar ningún campo editable. |
+    | `INPUT_INVALID` | 400 | El cuerpo JSON es inválido o no se pudo procesar. |
+    | `INPUT_LIMIT_EXCEEDED` | 400 | La cantidad de ítems supera el límite del servidor. |
+    | `READ_LIMIT_EXCEEDED` | 400 | `itemsPerPage` supera el máximo permitido. |
+    | `READ_FIELDS_ERROR` | 400 | Los campos solicitados no son válidos. |
+    | `READ_FILTERS_ERROR` | 400 | Los filtros tienen formato JSON inválido. |
+    | `READ_ORDER_ERROR` | 400 | El ordenamiento no es válido. |
+    | `READ_GROUP_BY_ERROR` | 400 | La agrupación no es válida. |
+    | `READ_HAVING_ERROR` | 400 | El `having` no es válido. |
+
+    ### OTP y Servicios
+    | Código | HTTP | Descripción |
+    | :--- | :--- | :--- |
+    | `OTP_INPUT_REQUIRED` | 400 | Falta `verification_id`. |
+    | `OTP_RECORD_NOT_FOUND` | 400 | El código de verificación no existe o expiró. |
+    | `OTP_USER_MISMATCH` | 400 | El código pertenece a otro usuario. |
+
+    ### Almacenamiento
+    | Código | HTTP | Descripción |
+    | :--- | :--- | :--- |
+    | `STORAGE_LOCKER_NOT_FOUND` | 404 | El locker no existe o está inhabilitado. |
+    | `STORAGE_LOCKER_ACCESS_DENIED` | 403 | El permiso `storage` del usuario no incluye este locker en su `payload` (`lck_ids`). |
+    | `STORAGE_LOCKER_KEY_REQUIRED` | 400 | Falta el identificador del locker. |
+    | `STORAGE_FILENAME_REQUIRED` | 400 | Falta el nombre del archivo. |
+    | `STORAGE_FILE_NOT_FOUND` | 404 | El archivo no existe en el locker. |
+    | `STORAGE_UPLOAD_ERROR` | 400 | No se recibió un archivo válido. |
+    | `STORAGE_MIME_TYPE_NOT_ALLOWED` | 400 | El tipo MIME del archivo no está permitido. |
+
+    ### Errores Internos
+    Los errores `500` (`CREATE_ERROR`, `UPDATE_ERROR`, `DELETE_ERROR`, `RESTORE_ERROR`, `DQB_*`, `MODEL_IS_UNDEFINED`, etc.) indican un fallo interno; consulte los registros del servidor.
+
+    ---
+
+    ## ⚙️ 9. Constantes y Valores por Defecto
+
+    Valores de configuración generales. Los marcados como *(por defecto)* o *(parametrizable)* pueden cambiar según la configuración del despliegue.
+
+    | Constante | Valor | Descripción |
+    | :--- | :--- | :--- |
+    | `itemsPerPage` (por defecto) | `25` | Registros por página si no se indica (`read:default`). |
+    | Tope máximo de lectura (GET) | `255` (por defecto) | Máximo de `itemsPerPage`; cada endpoint puede fijar otro (ej: bitácoras → `100`). |
+    | Límite de lote (crear / actualizar / eliminar / restaurar) | `100` (por defecto) | Máximo de ítems por petición en lote; parametrizable por endpoint (ej: lockers → `1`). |
+    | Duración de sesión de usuario | `2700s` (45 min) | `auth.userTokenDuration` (parametrizable). |
+    | Duración de sesión de cliente | `10800s` (3 h) | `auth.clientTokenDuration` (parametrizable). |
+    | Intervalo de renovación de token | `600s` (10 min) | `auth.userTokenUpdateInterval` / `auth.clientTokenUpdateInterval` (parametrizable). |
+    | Intentos fallidos de sesión | `3` | `auth.failedAttemptLimit` (parametrizable). |
+    | Lapso de reinicio de intentos | `86400s` (1 día) | `auth.failedAttemptLapse` (parametrizable). |
+    | Máximo de filtros por petición (DQB) | `20` (por defecto) | Límite del motor de consultas. |
+    | Iteraciones DQB (filtros / orden / groupBy) | `64` / `10` / `6` | Límites de iteración del motor de consultas. |
+    | Expiración de código OTP | `10` min | Tiempo de validez del código generado. |
+    | Intentos máximos de verificación OTP | `3` | Intentos permitidos antes de invalidar el código. |
+    | Niveles máximos de un locker | `10` | Validación de `locker_key`. |
+
+    ---
+
+    ## ✅ 10. Buenas Prácticas de Uso
+    1. **Login primero:** obtenga `{{jwt_token}}` con `Auth/User/Login` (o `Auth/Client/Login`) este se almacenara automaticamente en el environment.
+    2. **Idioma:** fije `{{lang}} = es | en` para controlar el idioma de los mensajes.
+    3. **Identificadores:** complete en el environment los ids de los recursos (p.ej. `{{branch_id}}`, `{{user_id}}`) que reutilizará en las URLs.
+    4. **Batch:** para crear varios registros use `?is_batch=true` en un `POST` con un arreglo de objetos. Para actualizar/eliminar/restaurar en lote, omita el id en la URL (`PUT`/`PATCH`/`DELETE` a la colección) y envíe un arreglo donde cada ítem incluya su `id`. La respuesta será 200/201 (si todos tienen éxito) o 207 (resultados mixtos).
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

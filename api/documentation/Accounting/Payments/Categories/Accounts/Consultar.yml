@@ -1,0 +1,125 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/accounts"
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("payment_account_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Cuenta Receptora de Pago
+  
+  Recupera una cuenta receptora individual, el listado de cuentas bajo una categoría o el directorio transversal completo de cuentas de pago de la empresa.
+  
+  ## 📝 Definición
+  - **URL**:
+    - Lista por categoría: `{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/accounts`
+    - Lista transversal global: `{{base_url}}/v1/accounting/payments/accounts`
+    - Individual: `{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/accounts/{{payment_account_id}}`
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=acc_payment_accounts`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas (ver documentación general): `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+  
+  ### Campos Disponibles
+  
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID del registro.
+  category_id | 0 | L, F, O | Identificador de la categoría.
+  category_name | 0 | L, F, O | Nombre de la categoría (obtenido por relación).
+  currency_id | 0 | L, F, O | Identificador de la moneda.
+  currency_code | 0 | L, F, O | Código ISO de la moneda (obtenido por relación).
+  currency_symbol | 0 | L, F, O | Símbolo de la moneda (obtenido por relación).
+  name | 0 | L, F, O | Nombre comercial o descriptivo de la cuenta.
+  metadata | 0 | L, F, O | Contenido JSON con los metadatos configurados.
+  is_disabled | 0 | L, F, O | Estado (0: activo, 1: inhabilitado).
+  created_at | 0 | L, F, O | Fecha de creación.
+  updated_at | 0 | L, F, O | Fecha de modificación.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+  
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+  
+  ## ⚙️ Reglas de Negocio
+  1. Si se invoca a través de la ruta subordinada a categoría, los resultados se restringen de forma automática a esa categoría.
+  2. Si se consulta por la ruta transversal `/v1/accounting/payments/accounts`, se retornan las cuentas de todas las categorías disponibles.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Listado)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": "1",
+        "category_id": "1",
+        "category_name": "Bancos Nacionales",
+        "currency_id": "1",
+        "currency_code": "USD",
+        "currency_symbol": "$",
+        "name": "Banesco Banco Universal - Cta Corriente",
+        "metadata": {
+          "account_number": "0134-1234-56-1234567890"
+        },
+        "is_disabled": "0"
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```
+  
+  **✅ 200 OK (Individual)**
+  ```JSON
+  {
+    "data": {
+      "id": "1",
+      "category_id": "1",
+      "category_name": "Bancos Nacionales",
+      "currency_id": "1",
+      "currency_code": "USD",
+      "currency_symbol": "$",
+      "name": "Banesco Banco Universal - Cta Corriente",
+      "metadata": {
+        "account_number": "0134-1234-56-1234567890"
+      },
+      "is_disabled": "0"
+    },
+    "in_trash": false
+  }
+  ```
+  
+  **❌ 404 Registro No Encontrado**
+  ```JSON
+  {
+    "status": 404,
+    "error": "RECORD_NOT_FOUND",
+    "messages": {
+      "error": "El recurso solicitado no fue encontrado."
+    }
+  }
+  ```

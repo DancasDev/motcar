@@ -1,0 +1,105 @@
+info:
+  name: Login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/auth/user"
+  body:
+    type: json
+    data: |-
+      {
+        "username": "{{username}}",
+        "password": "{{password}}"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201) {
+          const body = res.getBody();
+          if (body?.data?.token) {
+            bru.setEnvVar("jwt_token", body.data.token);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Iniciar Sesión de Usuario
+
+  Autentica un usuario y devuelve un token JWT para autenticar el resto de las peticiones. Es la **única ruta de usuario que no requiere token**.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/user`
+  - **Método**: `POST`
+  - **Filtros**: Ninguno (acceso público).
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `username` | `string` | Requerido. Mín: 5, Máx: 120. | Nombre de acceso del usuario.
+  `password` | `string` | Requerido. Mín: 8, Máx: 30. | Contraseña del usuario.
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "username": "Admin123",
+    "password": "Aa_12345678"
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. **Anti-enumeración:** ante credenciales incorrectas o usuario inexistente se responde `401 AUTH_USER_COMBINATION_NOT_FOUND` (respuesta constante para evitar *timing attacks*).
+  2. **Límite de intentos:** los valores son parametrizables (por lo general **3 intentos fallidos en 1 día**, reiniciándose al pasar el lapso). Al superarse → `403 AUTH_USER_ATTEMPTS_EXCEEDED`.
+  3. **Validaciones de formato** (username/password) fuera de rango también devuelven la respuesta genérica de credenciales.
+  4. El token generado se retorna en `data.token` junto con sus marcas de expiración y posibles acciones forzadas pendientes (`force_to`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+      "expires_at": 1790555994,
+      "refresh_at": 1790555994,
+      "force_to": null
+    },
+    "messages": {
+      "success": "Bienvenido Admin"
+    }
+  }
+  ```
+
+  **❌ 401 Credenciales Incorrectas**
+  ```JSON
+  {
+    "status": 401,
+    "error": "AUTH_USER_COMBINATION_NOT_FOUND",
+    "messages": {
+      "error": "Credenciales incorrectas."
+    }
+  }
+  ```
+
+  **❌ 403 Límite de Intentos Superado**
+  ```JSON
+  {
+    "status": 403,
+    "error": "AUTH_USER_ATTEMPTS_EXCEEDED",
+    "messages": {
+      "error": "Se han superado los intentos permitidos."
+    }
+  }
+  ```

@@ -1,0 +1,106 @@
+info:
+  name: Restaurar
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables/{{receivable_id}}"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Restaurar Cuenta por Cobrar
+  
+  Restaura una o varias cuentas por cobrar previamente enviadas a la papelera (soft delete).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables/{{receivable_id}}` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables` (Masivo)
+  - **Método**: `PATCH`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receivables,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  **Ejemplo Masivo (vía `.../receivables`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Limpia `deleted_at` y reactiva la cuenta por cobrar en la cartera de la sucursal.
+  2. **Restauración masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  3. Si el registro no existe o no está en la papelera → `200` con `affected: false`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Restaurado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro restaurado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (No estaba en papelera)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro restaurado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```

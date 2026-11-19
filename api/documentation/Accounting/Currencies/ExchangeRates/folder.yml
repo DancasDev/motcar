@@ -1,0 +1,7 @@
+info:
+  name: ExchangeRates
+  type: folder
+  seq: 6
+
+request:
+  auth: inherit

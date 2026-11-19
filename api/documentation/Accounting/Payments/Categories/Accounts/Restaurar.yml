@@ -1,0 +1,107 @@
+info:
+  name: Restaurar
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/accounts/{{payment_account_id}}"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Restaurar Cuenta Receptora de Pago
+  
+  Restaura una o varias cuentas receptoras de pago previamente eliminadas (soft delete).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/accounts/{{payment_account_id}}` (Individual) o `{{base_url}}/v1/accounting/payments/categories/{{payment_account_category_id}}/accounts` (Masivo)
+  - **Método**: `PATCH`
+  - **Filtros**: `auth:module_code=acc_payment_accounts,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  **Ejemplo Masivo (vía `.../accounts`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Limpia `deleted_at` y reactiva la cuenta de pago.
+  2. Si hubo registros afectados (`affected > 0`), el sistema purga automáticamente la memoria caché de cuentas.
+  3. **Restauración masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  4. Si el registro no existe o no está en la papelera → `200` con `affected: false`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Restaurado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro restaurado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (No estaba en papelera)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro restaurado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```

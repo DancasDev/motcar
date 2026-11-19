@@ -1,0 +1,44 @@
+info:
+  name: Logout
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/auth/user"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Cerrar Sesión de Usuario
+
+  Invalida el token JWT actual del usuario autenticado de forma permanente.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/user`
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:only_user,allow_forced=*`
+  - **Parámetros Opcionales**:
+    - `all=true` (Query string): Cierra todas las sesiones activas del usuario en todos los dispositivos (corte global). Por defecto, solo cierra la sesión actual.
+
+  ## ⚙️ Reglas de Negocio
+  1. **Revocación:** tras el logout, el token (o todas las sesiones si `all=true`) queda inhabilitado; cualquier uso posterior → `401 AUTH_TOKEN_IS_DISABLED`.
+  2. Para continuar operando debe obtenerse un token nuevo (Login).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": [],
+    "messages": {
+      "success": "Hasta luego, Admin"
+    }
+  }
+  ```

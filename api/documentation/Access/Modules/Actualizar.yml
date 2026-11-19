@@ -1,0 +1,141 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 2
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/access/modules/{{module_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "is_disabled": "0",
+        "is_developing": "0"
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Módulo
+  
+  Modifica uno o varios módulos existentes.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/modules/{{module_id}}` (Individual) o `{{base_url}}/v1/access/modules` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:module_code=acc_modules`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  is_developing | string | Opcional. Valores: "0","1". | En desarrollo.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "is_disabled": "0",
+    "is_developing": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/access/modules`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 10,
+      "is_disabled": "0"
+    },
+    {
+      "id": 11,
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. Los módulos forman parte de la configuración del sistema; solo se permite modificar su estado (`is_disabled`, `is_developing`).
+  2. **Actualización parcial:** solo se modifican los campos enviados en el cuerpo de la petición.
+  3. **Actualización masiva:** se habilita cuando no se envía identificador en la URL; cada objeto en el array debe incluir su `id`.
+  4. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 10,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Registro no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 10,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "is_disabled": "El campo debe contener un valor único."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "is_disabled": "El campo es obligatorio."
+    }
+  }
+  ```

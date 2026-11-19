@@ -1,0 +1,38 @@
+info:
+  name: Marcar Leída
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/my/notifications/{{notification_id}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Marcar Notificación como Leída
+
+  Actualiza el estado de una notificación In-App a leída (`read_at = NOW()`).
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications/{{notification_id}}`
+  - **Método**: `PUT`
+  - **Filtros**: `auth:only_user`
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "status": 200,
+    "error": null,
+    "messages": {
+      "success": "Notificación marcada como leída."
+    }
+  }
+  ```

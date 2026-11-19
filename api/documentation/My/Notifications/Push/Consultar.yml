@@ -1,0 +1,98 @@
+info:
+  name: Consultar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/my/notifications/push/devices"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 200) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d[0]?.id : d?.id;
+          if (id) bru.setEnvVar("device_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Listar Dispositivos Push del Usuario
+
+  Obtiene la lista de dispositivos registrados para notificaciones push del usuario autenticado. Usa el motor de consultas DQB.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/notifications/push/devices` (Lista) o `{{base_url}}/v1/my/notifications/push/devices/{{device_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:only_user`
+  - **Límite**: Por defecto (25 por página, máx 255)
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  Use la sintaxis del motor de consultas: `fields`, `filters`, `order`, `page`, `itemsPerPage`, `groupBy`, `having`.
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID del dispositivo registrado.
+  user_id | 0 | L | ID del usuario autenticado.
+  device_uuid | 0 | L, F, O | Identificador único del dispositivo (UUID).
+  device_type | 0 | L, F, O | Tipo de dispositivo (ej. `android`, `ios`, `web`).
+  device_name | 0 | L, F, O | Nombre amigable del dispositivo.
+  os_name | 0 | L, F, O | Nombre del sistema operativo.
+  os_version | 0 | L, F, O | Versión del sistema operativo.
+  app_version | 0 | L, F, O | Versión de la aplicación cliente.
+  push_provider | 0 | L, F, O | Proveedor de notificaciones (ej. `fcm`).
+  push_token | 0 | F, O | Token push (oculto en lectura por seguridad).
+  notifications_enabled | 0 | L, F, O | Notificaciones activadas en el dispositivo (0/1).
+  last_active_at | 0 | L, F, O | Última fecha de actividad.
+  last_ip | 0 | L, F, O | Última dirección IP registrada.
+  is_disabled | 0 | L, F, O | Estado (0: activo, 1: inhabilitado).
+  created_at | 0 | L, F, O | Fecha de registro.
+  updated_at | 0 | L, F, O | Fecha de actualización.
+  deleted_at | 2 | L, F, O | Eliminación lógica (requiere nivel 2).
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Listado)**
+  ```json
+  {
+    "status": 200,
+    "data": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "device_uuid": "123e4567-e89b-12d3-a456-426614174000",
+        "device_type": "android",
+        "device_name": "Pixel 8 Pro",
+        "os_name": "Android",
+        "os_version": "14",
+        "app_version": "1.0.0",
+        "push_provider": "fcm",
+        "notifications_enabled": 1,
+        "last_active_at": "2026-10-04 12:00:00",
+        "last_ip": "127.0.0.1",
+        "is_disabled": "0",
+        "created_at": "2026-10-04 12:00:00",
+        "updated_at": "2026-10-04 12:00:00"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "itemsPerPage": 25,
+      "totalItems": 1
+    }
+  }
+  ```

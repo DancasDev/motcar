@@ -1,0 +1,144 @@
+info:
+  name: Actualizar
+  type: http
+  seq: 3
+
+http:
+  method: PUT
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables/{{receivable_id}}"
+  body:
+    type: json
+    data: |-
+      {
+        "due_date": "2026-10-20",
+        "description": "Cuota #01 de 24 (Prórroga acordada) - GRUPO SAM EK-EXPRESS #01"
+      }
+
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Actualizar Cuenta por Cobrar
+  
+  Modifica una o varias cuentas por cobrar existentes de la sucursal.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables/{{receivable_id}}` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables` (Masivo)
+  - **Método**: `PUT`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receivables,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  description | string | Opcional. Máx: 150. | Glosa o descripción de la obligación.
+  total_amount | decimal | Opcional. Mayor a 0. | Monto nominal total exigible.
+  due_date | string | Opcional. Fecha válida (YYYY-MM-DD). | Nueva fecha límite de vencimiento.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "due_date": "2026-10-20",
+    "description": "Cuota #01 de 24 (Prórroga acordada) - GRUPO SAM EK-EXPRESS #01"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../receivables`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1,
+      "due_date": "2026-10-20"
+    },
+    {
+      "id": 2,
+      "due_date": "2026-11-20"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Integridad de cobros:** solo es posible actualizar cuentas por cobrar que se encuentren en estado Pendiente (`status = 0`) y cuyo monto abonado sea estrictamente cero (`paid_amount = 0`). Las obligaciones con pagos parciales o totales no admiten modificaciones (`affected: false`).
+  2. La modificación respeta el alcance de la sucursal indicada en `{{branch_id}}`.
+  3. **Actualización parcial:** solo se modifican los campos enviados en el cuerpo de la petición.
+  4. **Actualización masiva:** se habilita cuando no se envía identificador en la URL; cada objeto en el array debe incluir su `id`.
+  5. Si la petición no incluye ningún campo modificable → `400 UPDATE_EMPTY_ITEM`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Éxito Individual)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro actualizado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (Registro no afectado / Ya posee abonos)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro actualizado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "total_amount": "El campo debe ser un número decimal mayor a cero."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "total_amount": "El campo debe ser un número decimal mayor a cero."
+    }
+  }
+  ```

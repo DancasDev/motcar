@@ -1,0 +1,153 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/access/clients/{{client_id}}/permissions"
+  body:
+    type: json
+    data: |-
+      {
+        "module_id": "{{module_id}}",
+        "feature": 3,
+        "level": "1",
+        "payload": {
+          "lck_ids": [1, 2]
+        },
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("permission_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Permiso de Cliente
+
+  Registra un nuevo permiso para el cliente de API especificado sobre un módulo.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/clients/{{client_id}}/permissions`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_client_permissions,only_user`
+  - **Límite**: por defecto
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  module_id | integer | Requerido. Debe corresponder a un módulo existente. | Módulo al que se otorga el permiso.
+  scope_path | string | Opcional. Por defecto `*`. Ruta jerárquica de sucursales (ej: `1`, `1/2`, `1/*`) que debe ser válida y existente. | Alcance del permiso.
+  feature | integer | Requerido. | Bitmask de características (1=Crear, 2=Leer, 4=Actualizar, 8=Eliminar, 16=Papelera, 32=Desarrollo). Ver documentación general.
+  level | string | Opcional. Valores: "0","1","2". | Nivel de permiso.
+  payload | object | Opcional. Se valida contra el `payload_schema` del módulo; si el módulo no tiene esquema, el valor se ignora y queda `null`. | Carga útil del permiso (ej: `{"lck_ids": [1,2]}` en el módulo `storage`).
+  is_disabled | string | Opcional. Valores: "0","1". | Estado (0: activo — por defecto, 1: inhabilitado).
+
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "module_id": 1,
+    "feature": 3,
+    "level": "1",
+    "payload": {
+      "lck_ids": [1, 2]
+    },
+    "is_disabled": "0"
+  }
+  ```
+
+  **Ejemplo Masivo (vía `/v1/access/clients/{{client_id}}/permissions?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "module_id": 1,
+      "feature": 3,
+      "level": "1",
+      "is_disabled": "0"
+    },
+    {
+      "module_id": 2,
+      "feature": 1,
+      "level": "1",
+      "is_disabled": "0"
+    }
+  ]
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. El permiso queda vinculado automáticamente al cliente de API especificado en la ruta.
+  2. `scope_path` define el alcance: `*` aplica a nivel global; una ruta de IDs (ej: `1`, `1/2`, `1/*`) delimita el permiso a las sucursales indicadas y debe ser una ruta válida en la jerarquía.
+  3. `payload` es una estructura JSON validada contra el esquema definido por el módulo correspondiente; si el módulo no define esquema, el valor se ignora y queda `null`.
+  4. No se permite duplicar la combinación de módulo y alcance para un mismo cliente.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 10
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 10
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "module_id": "El campo debe contener un valor previamente existente en la base de datos."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+
+  **❌ 400 Fail Validation (payload inválido)**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "lck_ids": "Debe contener solo elementos de tipo int."
+    }
+  }
+  ```

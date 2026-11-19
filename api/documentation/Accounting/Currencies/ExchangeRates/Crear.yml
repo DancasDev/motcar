@@ -1,0 +1,136 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/accounting/currencies/{{currency_id}}/exchange-rates"
+  body:
+    type: json
+    data: |-
+      {
+        "date": "2026-10-05",
+        "value": 45.2500
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("exchange_rate_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Tasa de Cambio
+  
+  Registra una nueva cotización o tasa de cambio asociada a una moneda específica.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/accounting/currencies/{{currency_id}}/exchange-rates` (Individual) o `{{base_url}}/v1/accounting/currencies/{{currency_id}}/exchange-rates?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_exchange_rates,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  date | string | Requerido. Formato fecha válido (YYYY-MM-DD). Único por moneda. | Fecha correspondiente a la cotización.
+  value | float/decimal | Requerido. Decimal estrictamente mayor a 0. | Valor de la tasa de cambio con respecto a la moneda base.
+  
+  > `currency_id` no se envía en el cuerpo; el controlador lo vincula automáticamente a partir del parámetro `{{currency_id}}` presente en la URL.
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "date": "2026-10-05",
+    "value": 45.2500
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `.../exchange-rates?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "date": "2026-10-05",
+      "value": 45.2500
+    },
+    {
+      "date": "2026-10-06",
+      "value": 45.3000
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. La combinación de `currency_id` y `date` es única; no pueden existir dos cotizaciones para la misma fecha en una misma moneda.
+  2. Al insertar exitosamente una tasa, el sistema invalida la memoria caché del listado de monedas para reflejar la cotización vigente.
+  3. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "date": "Ya existe una tasa registrada para esta fecha en la moneda."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "date": "Ya existe una tasa registrada para esta fecha en la moneda."
+    }
+  }
+  ```

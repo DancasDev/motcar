@@ -1,0 +1,40 @@
+info:
+  name: Estado
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/my/telegram/status"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Estado de Vinculación con Telegram
+
+  Consulta si la cuenta de Telegram del usuario autenticado ya está vinculada y si el canal Telegram está disponible.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/telegram/status`
+  - **Método**: `GET`
+  - **Filtros**: `auth:only_user`
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK**
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "channel_available": true,
+      "is_bound": true,
+      "telegram_username": "usuario_telegram",
+      "telegram_chat_id": 123456789
+    }
+  }
+  ```

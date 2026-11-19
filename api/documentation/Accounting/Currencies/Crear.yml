@@ -1,0 +1,144 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/accounting/currencies"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Dólar Estadounidense",
+        "code": "USD",
+        "symbol": "$",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("currency_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Moneda
+  
+  Registra una nueva moneda en el catálogo global de contabilidad.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/accounting/currencies` (Individual) o `{{base_url}}/v1/accounting/currencies?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_currencies,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  name | string | Requerido. Máx: 60. | Nombre descriptivo de la moneda (ej: "Dólar Estadounidense").
+  code | string | Requerido. Alfabético. Longitud: 3. Único. | Código ISO 4217 de la moneda (ej: "USD").
+  symbol | string | Requerido. Máx: 10. | Símbolo representativo (ej: "$").
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "name": "Dólar Estadounidense",
+    "code": "USD",
+    "symbol": "$",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/accounting/currencies?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "name": "Dólar Estadounidense",
+      "code": "USD",
+      "symbol": "$",
+      "is_disabled": "0"
+    },
+    {
+      "name": "Bolívar Digital",
+      "code": "VES",
+      "symbol": "Bs.",
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El campo `code` debe ser único en el catálogo y constar de 3 letras alfabéticas mayúsculas/minúsculas conforme al estándar ISO 4217.
+  2. Si la creación resulta exitosa, el sistema purga automáticamente la memoria caché de monedas del sistema.
+  3. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "code": "El campo debe contener un valor único."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "code": "El campo debe contener un valor único."
+    }
+  }
+  ```

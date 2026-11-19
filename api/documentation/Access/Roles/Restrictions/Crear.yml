@@ -1,0 +1,161 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/access/roles/{{role_id}}/restrictions"
+  body:
+    type: json
+    data: |-
+      {
+        "type": "ip",
+        "rule": "allow",
+        "config": {
+          "list": [
+            "10.0.0.0/8"
+          ]
+        },
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("restriction_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Restricción de Rol
+  
+  Registra un nuevo restricción de rol. 
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/access/roles/{{role_id}}/restrictions`
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=acc_role_restrictions,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  type | string | Requerido. Tipos y reglas en la documentación general. | Tipo de restricción.
+  rule | string | Requerido. Según el tipo (ver documentación general). | Regla.
+  scope_path | string | Opcional. Por defecto `*`. Ruta jerárquica de sucursales (ej: `1`, `1/2`, `1/*`) que debe ser válida y existente. | Alcance de la restricción.
+  config | object | Requerido. Según tipo/regla (ver documentación general). | Configuración.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "type": "ip",
+    "rule": "allow",
+    "config": {
+      "list": [
+        "10.0.0.0/8"
+      ]
+    },
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/access/roles/{{role_id}}/restrictions?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "type": "ip",
+      "rule": "allow",
+      "config": {
+        "list": [
+          "10.0.0.0/8"
+        ]
+      },
+      "is_disabled": "0"
+    },
+    {
+      "type": "ip",
+      "rule": "allow",
+      "config": {
+        "list": [
+          "10.0.0.0/8"
+        ]
+      },
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. La restricción queda vinculada automáticamente al rol especificado en la ruta.
+  2. `scope_path` define el alcance: `*` aplica a nivel global; una ruta de IDs (ej: `1`, `1/2`, `1/*`) delimita la restricción a las sucursales indicadas y debe ser una ruta válida en la jerarquía.
+  3. El objeto `config` se valida estrictamente según la combinación de `type` y `rule` seleccionada (ver documentación general).
+
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 10
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 10
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "type": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "type": "El campo debe contener un valor único."
+    }
+  }
+  ```

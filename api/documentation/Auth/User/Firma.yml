@@ -1,0 +1,78 @@
+info:
+  name: Firma
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/auth/user/signature"
+  body:
+    type: json
+    data: |-
+      {
+        "signature_url": "https://storage.example.com/signatures/user_1_sig.png"
+      }
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Guardar Firma Digital
+
+  Registra o actualiza la URL de la firma digital trazable del usuario autenticado en su perfil.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/auth/user/signature`
+  - **Método**: `POST`
+  - **Filtros**: `auth:only_user,allow_forced=*`
+
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  signature_url | string | Requerido. URL válida del recurso de firma. | Ubicación del archivo de imagen con la firma digital.
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "signature_url": "https://storage.example.com/signatures/user_1_sig.png"
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. Requiere autenticación con token de usuario.
+  2. Permite su ejecución incluso si el usuario tiene acciones forzadas pendientes (`allow_forced=*`).
+  3. Asocia la URL de la firma directamente al perfil del usuario autenticado.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Éxito)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "signature_url": "https://storage.example.com/signatures/user_1_sig.png"
+    },
+    "messages": {
+      "success": "Firma digital registrada exitosamente en tu perfil."
+    }
+  }
+  ```
+
+  **❌ 400 Bad Request (URL ausente)**
+  ```JSON
+  {
+    "status": 400,
+    "error": "SIGNATURE_URL_REQUIRED",
+    "messages": {
+      "error": "La URL de firma es requerida."
+    }
+  }
+  ```

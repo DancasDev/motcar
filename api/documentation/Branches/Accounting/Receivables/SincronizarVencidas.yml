@@ -1,0 +1,48 @@
+info:
+  name: SincronizarVencidas
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables/overdue-sync"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Sincronizar Morosidad de Cartera
+  
+  Evalúa de forma masiva los vencimientos de todas las cuentas por cobrar de la sucursal y actualiza el indicador de morosidad (`is_overdue`) en la ficha de cada participante.
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/accounting/receivables/overdue-sync`
+  - **Método**: `POST`
+  - **Filtros**: `auth:scope=uri|3,module_code=acc_receivables,only_user`
+  - **Límite**: no aplica
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  No requiere cuerpo ni parámetros en la petición. La sucursal se transmite en la URL.
+  
+  ## ⚙️ Reglas de Negocio
+  1. Identifica las cuentas por cobrar con fecha de vencimiento menor a la fecha actual (`due_date < CURDATE()`) que se encuentren en estado Pendiente (`0`) o Abonado (`1`).
+  2. Actualiza atómicamente la bandera `is_overdue = '1'` para los suscriptores con mora y `is_overdue = '0'` para los que se encuentran completamente al día.
+  3. No aplica modo masivo (proceso global por sucursal).
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "processed": 48,
+      "updated": 3
+    }
+  }
+  ```

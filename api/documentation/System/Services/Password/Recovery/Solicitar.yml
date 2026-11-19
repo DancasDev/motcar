@@ -1,0 +1,102 @@
+info:
+  name: Solicitar
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/system/services/password/recovery"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "admin@example.com"
+      }
+  auth: none
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.getStatus() === 201) {
+          const body = res.getBody();
+          if (body?.data?.verification_id) {
+            bru.setEnvVar("verification_id", body.data.verification_id);
+          }
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Solicitar Recuperación de Contraseña
+
+  Inicia el flujo de recuperación de contraseña enviando un código OTP al correo del usuario. Ruta de acceso público (no requiere token).
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/services/password/recovery`
+  - **Método**: `POST`
+  - **Filtros**: Ninguno (acceso público).
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Body
+
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  `email` | `string` | Requerido. Correo válido. | Correo del usuario que solicita la recuperación.
+
+  **Ejemplo:**
+  ```JSON
+  {
+    "email": "admin@example.com"
+  }
+  ```
+
+  ## ⚙️ Reglas de Negocio
+  1. **Anti-enumeración:** si el correo no pertenece a ningún usuario, la respuesta es igualmente `201` con un `verification_id` **falso** (indistinguible del real), de modo que no se puede enumerar cuentas. Al intentar usar ese id en la confirmación fallará con `OTP_RECORD_NOT_FOUND` (igual que uno expirado).
+  2. El código OTP expira en **10 minutos**.
+  3. Si ya existe una solicitud pendiente para el usuario, no se genera una nueva (`OtpPendingException`).
+  4. El `verification_id` devuelto se almacena automáticamente en la variable de entorno `{{verification_id}}` (script de la petición), que se usa en el paso de confirmación.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 201 Created (Éxito — correo registrado)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "verification_id": 12
+    },
+    "messages": {
+      "success": "Si el correo ingresado coincide con una cuenta activa, recibirás instrucciones de recuperación en breve."
+    }
+  }
+  ```
+
+  **✅ 201 Created (Correo no registrado — id falso, no se envía correo)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "verification_id": 978032496
+    },
+    "messages": {
+      "success": "Si el correo ingresado coincide con una cuenta activa, recibirás instrucciones de recuperación en breve."
+    }
+  }
+  ```
+
+  **❌ 400 Validación de Correo**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "email": "El campo debe contener una dirección de email válida."
+    }
+  }
+  ```

@@ -1,0 +1,107 @@
+info:
+  name: Eliminar
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}"
+  auth: inherit
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Eliminar Participante de Grupo SAM
+  
+  Mueve una o varias inscripciones de participantes a la papelera (soft delete).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants/{{participant_id}}` (Individual) o `{{base_url}}/v1/branches/{{branch_id}}/financing/groups/{{group_id}}/participants` (Masivo)
+  - **Método**: `DELETE`
+  - **Filtros**: `auth:scope=uri|3,module_code=fnc_san_participants,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  **Ejemplo Masivo (vía `.../participants`, sin id en la URL):**
+  ```JSON
+  [
+    {
+      "id": 1
+    },
+    {
+      "id": 2
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. **Soft delete:** registra `deleted_at`; el participante deja de listarse en consultas regulares del grupo.
+  2. Al eliminar registros exitosamente, recalcula de inmediato el conteo de suscriptores activos (`participant_count`) en el grupo SAM.
+  3. **Eliminación permanente:** con `In-Trash: true` el borrado es físico, condicionado a que no existan cuotas o transacciones contables asociadas.
+  4. **Eliminación masiva:** se deduce por la ausencia de id en la URL; cada ítem debe incluir su `id`.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 200 OK (Eliminado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 1,
+      "affected": true
+    },
+    "messages": {
+      "success": "Registro eliminado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 200 OK (No existía / no afectado)**
+  ```JSON
+  {
+    "status": 200,
+    "data": {
+      "id": 999,
+      "affected": false
+    },
+    "messages": {
+      "success": "No se realizaron cambios porque los datos ya estaban actualizados."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 200,
+        "data": {
+          "id": 1,
+          "affected": true
+        },
+        "messages": {
+          "success": "Registro eliminado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "id": "El campo es obligatorio."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```

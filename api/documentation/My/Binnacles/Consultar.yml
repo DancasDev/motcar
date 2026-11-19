@@ -1,0 +1,75 @@
+info:
+  name: Consultar
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/my/binnacles"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Consultar Mi Actividad (Bitácoras)
+
+  Lista los registros de actividad y eventos generados por el usuario autenticado. Requiere un token de usuario activo.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/my/binnacles` (Lista) o `{{base_url}}/v1/my/binnacles/{{binnacle_id}}` (Individual)
+  - **Método**: `GET`
+  - **Filtros**: `auth:module_code=my_binnacles,only_user`
+  - **Límite**: 100
+
+  ## 📤 Datos de Solicitud (Request)
+
+  ### Parámetros de Consulta (Query Params)
+  `fields`, `filters`, `order`, `page`, `itemsPerPage` (máx **100**). `groupBy`/`having` deshabilitados.
+
+  ### Campos Disponibles
+
+  Nombre | Nivel | Acciones | Descripción
+  --- | --- | --- | ---
+  id | 0 | L, F, O | ID de la bitácora.
+  from_entity_type | 0 | L | Tipo de entidad que originó el evento.
+  from_entity_id | 0 | L | Identificador de la entidad que originó el evento.
+  to_entity_type | 0 | L, F, O | Tipo de entidad destino.
+  to_entity_id | 0 | L, F, O | ID de la entidad destino.
+  action | 0 | L, F, O | Acción ejecutada.
+  date | 0 | L, F, O | Fecha de la acción.
+  ip | 0 | L, F, O | Dirección IP.
+  data | 0 | L, F, O | Datos adicionales (JSON string).
+  session_id | 0 | L, F, O | ID de sesión.
+  description | 0 | L | **Calculado.** Descripción legible de la acción.
+
+  > **Acciones:** `L`: Lectura (`fields`), `F`: Filtrado (`filters`), `O`: Ordenamiento (`order`), `G`: Agrupamiento (`groupBy`), `H`: Condición agregada (`having`).
+
+  ## ⚙️ Reglas de Negocio
+  1. **Solo lectura** y solo la propia actividad del usuario autenticado.
+  2. `description` es un campo calculado que humaniza la bitácora según el idioma.
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Lista)**
+  ```JSON
+  {
+    "data": [
+      {
+        "id": "120",
+        "to_entity_type": "gac_user",
+        "to_entity_id": "1",
+        "action": "login",
+        "date": "2026-08-01 05:20:10",
+        "ip": "127.0.0.1",
+        "description": "El usuario \"Admin123\" inició sesión."
+      }
+    ],
+    "count": 1,
+    "limit": 25,
+    "in_trash": false
+  }
+  ```

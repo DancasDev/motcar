@@ -1,0 +1,144 @@
+info:
+  name: Crear
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{base_url}}/v1/financing/notes/categories"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Compromiso de Pago",
+        "description": "Acuerdos y promesas de pago pactadas con el participante",
+        "color": "#2ECC71",
+        "is_disabled": "0"
+      }
+
+  auth: inherit
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if ([201, 207].includes(res.getStatus())) {
+          const d = res.getBody()?.data;
+          const id = Array.isArray(d) ? d.find(i => i?.status === 201)?.data?.id : d?.id;
+          if (id) bru.setEnvVar("note_category_id", String(id));
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Crear Categoría de Nota CRM
+  
+  Registra una nueva categoría para la bitácora u hojas de vida de los participantes (ej: Llamada de Cobranza, Visita Domiciliaria, Compromiso de Pago).
+  
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/financing/notes/categories` (Individual) o `{{base_url}}/v1/financing/notes/categories?is_batch=true` (Masivo)
+  - **Método**: `POST`
+  - **Filtros**: `auth:module_code=glb_note_categories,only_user`
+  - **Límite**: por defecto
+  
+  > **Nota:** autenticación, encabezados estándar, formato de respuesta, fechas en UTC y errores comunes se documentan en la **documentación general** de la colección. Aquí solo lo específico del recurso.
+  
+  ## 📤 Datos de Solicitud (Request)
+  
+  ### Body
+  
+  Campo | Tipo | Reglas | Descripción
+  --- | --- | --- | ---
+  name | string | Requerido. Máx: 50. Único. | Nombre identificador de la categoría.
+  description | string | Opcional. Máx: 255. | Descripción del propósito operativo de la categoría.
+  color | string | Opcional. Formato hexadecimal `#RRGGBB`. Máx: 7. | Color distintivo de etiqueta visual en interfaz.
+  is_disabled | string | Opcional. Valores: "0", "1". | Estado (0: activo, 1: inhabilitado).
+  
+  **Ejemplo Individual:**
+  ```JSON
+  {
+    "name": "Compromiso de Pago",
+    "description": "Acuerdos y promesas de pago pactadas con el participante",
+    "color": "#2ECC71",
+    "is_disabled": "0"
+  }
+  ```
+  
+  **Ejemplo Masivo (vía `/v1/financing/notes/categories?is_batch=true`):**
+  ```JSON
+  [
+    {
+      "name": "Compromiso de Pago",
+      "description": "Acuerdos y promesas de pago pactadas",
+      "color": "#2ECC71",
+      "is_disabled": "0"
+    },
+    {
+      "name": "Incidencia Legal",
+      "description": "Gestiones extrajudiciales o de litigio",
+      "color": "#E74C3C",
+      "is_disabled": "0"
+    }
+  ]
+  ```
+  
+  ## ⚙️ Reglas de Negocio
+  1. El campo `name` debe ser único en todo el catálogo de categorías de notas.
+  2. El campo `color` debe cumplir con el formato hexadecimal válido `#RRGGBB`.
+  3. **Creación masiva:** se activa agregando el parámetro `?is_batch=true` en la URL y enviando un arreglo de objetos.
+  
+  ## 📥 Respuestas (Responses)
+  
+  **✅ 201 Created (Éxito Individual)**
+  ```JSON
+  {
+    "status": 201,
+    "data": {
+      "id": 1
+    },
+    "messages": {
+      "success": "Registro creado exitosamente."
+    }
+  }
+  ```
+  
+  **✅ 207 Multi-Status (Éxito/Error Masivo)**
+  ```JSON
+  {
+    "status": 207,
+    "data": [
+      {
+        "status": 201,
+        "data": {
+          "id": 1
+        },
+        "messages": {
+          "success": "Registro creado exitosamente."
+        }
+      },
+      {
+        "status": 400,
+        "error": "FAIL_VALIDATION",
+        "messages": {
+          "name": "El campo debe contener un valor único."
+        }
+      }
+    ],
+    "limit": 100,
+    "affected": 1
+  }
+  ```
+  
+  **❌ 400 Fail Validation**
+  ```JSON
+  {
+    "status": 400,
+    "error": "FAIL_VALIDATION",
+    "messages": {
+      "name": "El campo debe contener un valor único."
+    }
+  }
+  ```

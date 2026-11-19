@@ -1,0 +1,37 @@
+info:
+  name: Descargar
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{base_url}}/v1/system/storage/download"
+  headers:
+    - name: X-Action-Token
+      value: "{{action_token}}"
+  auth: none
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: |-
+  # Descargar Archivo Privado
+
+  Descarga el contenido binario de un archivo privado utilizando el token de acción emitido por el endpoint de URL firmada.
+  Soporta aceleración de servidor web (Sendfile / FrankenPHP / Nginx) o streaming PHP.
+
+  ## 📝 Definición
+  - **URL**: `{{base_url}}/v1/system/storage/download`
+  - **Método**: `GET`
+  - **Filtros**: `action_token:action=storage_download`
+
+  ## 📥 Respuestas (Responses)
+
+  **✅ 200 OK (Stream binario)**
+  Headers:
+  - `Content-Type`: tipo MIME del archivo (ej: `image/png`, `application/pdf`)
+  - `Content-Disposition`: `inline; filename="firma.png"`
+  - `Content-Length`: tamaño en bytes
