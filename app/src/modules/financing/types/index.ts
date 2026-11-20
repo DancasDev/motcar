@@ -432,7 +432,6 @@ export interface FinancingItem {
   financed_amount?: number
   installment_count: string | number
   installment_amount: string | number
-  initial_due_date?: string | null
   frequency_base_date: string
   status: string | number
   is_overdue?: string | number
@@ -447,12 +446,10 @@ export interface CreateFinancingPayload {
   client_id: number | string
   contract_type_id?: number | string | null
   frequency_id: number | string
-  code?: string
   total_amount: number | string
   initial_amount: number | string
   installment_count: number | string
   installment_amount?: number | string | null
-  initial_due_date?: string | null
   frequency_base_date: string
   status?: string
   is_disabled?: string
@@ -461,12 +458,10 @@ export interface CreateFinancingPayload {
 export interface UpdateFinancingPayload {
   contract_type_id?: number | string | null
   frequency_id?: number | string
-  code?: string
   total_amount?: number | string
   initial_amount?: number | string
   installment_count?: number | string
   installment_amount?: number | string | null
-  initial_due_date?: string | null
   frequency_base_date?: string
   status?: string
   awarded_at?: string | null
@@ -501,7 +496,6 @@ export interface FinancingStatement {
     financed_amount: number
     installment_amount: number
     installment_count: number
-    initial_due_date: string | null
     frequency_base_date: string
     frequency_code: string | null
     frequency_name: string | Record<string, string> | null

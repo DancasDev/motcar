@@ -53,7 +53,6 @@ class FinancingSchema extends Schema {
         'initial_amount'              => [],
         'installment_count'           => [],
         'installment_amount'          => [],
-        'initial_due_date'            => [],
         'frequency_base_date'         => [],
         'status'                      => [],
         'is_overdue'                  => [],

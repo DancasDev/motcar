@@ -34,9 +34,7 @@ class Home extends BaseController {
 
             $item = $this->normalizeNullableFields($item);
 
-            if (empty($item['code'])) {
-                $item['code'] = 'FIN-' . str_pad((string) $branchId, 2, '0', STR_PAD_LEFT) . '-' . date('ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
-            }
+            $item['code'] = 'FIN-' . str_pad((string) $branchId, 2, '0', STR_PAD_LEFT) . '-' . date('ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
             if (!array_key_exists('installment_amount', $item) || $item['installment_amount'] === null || $item['installment_amount'] === '') {
                 $calculated = $this->calculateInstallmentAmount(
@@ -112,7 +110,7 @@ class Home extends BaseController {
             }
 
             $rows = $this->model
-                ->select('id, client_id, contract_type_id, total_amount, initial_amount, installment_count, installment_amount, initial_due_date, frequency_base_date')
+                ->select('id, client_id, contract_type_id, total_amount, initial_amount, installment_count, installment_amount, frequency_base_date')
                 ->where('branch_id', $branchId)
                 ->whereIn('id', $ids)
                 ->findAll();
@@ -143,7 +141,7 @@ class Home extends BaseController {
         });
 
         $this->setCallback('itemSetValues', function (array $item) use (&$existingMap): array {
-            unset($item['branch_id'], $item['is_overdue']);
+            unset($item['branch_id'], $item['is_overdue'], $item['code']);
             $item = $this->normalizeNullableFields($item);
 
             $financialTouched = array_key_exists('total_amount', $item)
@@ -221,16 +219,6 @@ class Home extends BaseController {
             $financialError = $this->validateFinancialInvariants($effTotal, $effInitial, $effCount, $effInstAmount);
             if ($financialError !== null) {
                 return $financialError;
-            }
-
-            $effInitDate = array_key_exists('initial_due_date', $validItem) ? $validItem['initial_due_date'] : $existing['initial_due_date'];
-            $effBaseDate = array_key_exists('frequency_base_date', $validItem) ? $validItem['frequency_base_date'] : $existing['frequency_base_date'];
-            if (!empty($effInitDate) && strcmp((string) $effInitDate, (string) $effBaseDate) > 0) {
-                return [
-                    'status'   => 400,
-                    'error'    => 'FAIL_VALIDATION',
-                    'messages' => ['initial_due_date' => lang('Validation.date_less_than_equal_to', ['param' => 'frequency_base_date'])],
-                ];
             }
 
             $effContractTypeId = array_key_exists('contract_type_id', $validItem)
@@ -493,7 +481,7 @@ class Home extends BaseController {
     }
 
     private function normalizeNullableFields(array $item): array {
-        foreach (['contract_type_id', 'initial_due_date', 'awarded_at', 'benefit_metadata'] as $field) {
+        foreach (['contract_type_id', 'awarded_at', 'benefit_metadata'] as $field) {
             if (array_key_exists($field, $item) && $item[$field] === '') {
                 $item[$field] = null;
             }

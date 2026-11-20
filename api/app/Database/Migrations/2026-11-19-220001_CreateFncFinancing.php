@@ -49,10 +49,6 @@ class CreateFncFinancing extends Migration {
                 'type'       => 'DECIMAL',
                 'constraint' => '14,2',
             ],
-            'initial_due_date' => [
-                'type' => 'DATE',
-                'null' => true,
-            ],
             'frequency_base_date' => [
                 'type' => 'DATE',
             ],

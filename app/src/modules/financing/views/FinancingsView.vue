@@ -65,7 +65,7 @@ const financingsQuery = useDataQuery<FinancingItem>(
 )
 
 const headers = [
-  { title: 'Plan / Código', key: 'code', align: 'start' as const, sortable: true },
+  { title: 'Plan', key: 'code', align: 'start' as const, sortable: true },
   { title: 'Cliente', key: 'client', align: 'start' as const, sortable: false },
   { title: 'Condiciones', key: 'total_amount', align: 'end' as const, sortable: true, width: '210px' },
   { title: 'Estado', key: 'status', align: 'center' as const, sortable: true, width: '120px' },
@@ -236,12 +236,10 @@ interface FinancingFormState {
   client_id: number | null
   contract_type_id: number | null
   frequency_id: number | null
-  code: string
   total_amount: number | null
   initial_amount: number | null
   installment_count: number | null
   installment_amount: number | null
-  initial_due_date: string
   frequency_base_date: string
   status: string
 }
@@ -250,12 +248,10 @@ const formData = ref<FinancingFormState>({
   client_id: null,
   contract_type_id: null,
   frequency_id: null,
-  code: '',
   total_amount: null,
   initial_amount: null,
   installment_count: null,
   installment_amount: null,
-  initial_due_date: '',
   frequency_base_date: '',
   status: '1'
 })
@@ -320,12 +316,10 @@ function openCreateDialog(): void {
     client_id: null,
     contract_type_id: null,
     frequency_id: null,
-    code: '',
     total_amount: null,
     initial_amount: null,
     installment_count: null,
     installment_amount: null,
-    initial_due_date: '',
     frequency_base_date: new Date().toISOString().split('T')[0],
     status: '1'
   }
@@ -339,12 +333,10 @@ function openEditDialog(item: FinancingItem): void {
     client_id: Number(item.client_id),
     contract_type_id: item.contract_type_id ? Number(item.contract_type_id) : null,
     frequency_id: item.frequency_id ? Number(item.frequency_id) : null,
-    code: item.code || '',
     total_amount: Number(item.total_amount),
     initial_amount: Number(item.initial_amount),
     installment_count: Number(item.installment_count),
     installment_amount: Number(item.installment_amount),
-    initial_due_date: item.initial_due_date ? item.initial_due_date.substring(0, 10) : '',
     frequency_base_date: item.frequency_base_date ? item.frequency_base_date.substring(0, 10) : '',
     status: String(item.status ?? '1')
   }
@@ -369,12 +361,6 @@ function validateForm(): string | null {
   }
   if (financialPreview.value.error) return financialPreview.value.error
   if (!formData.value.frequency_base_date) return 'Ingresa la fecha base / inicio de cobros.'
-  if (
-    formData.value.initial_due_date &&
-    formData.value.initial_due_date > formData.value.frequency_base_date
-  ) {
-    return 'La fecha de la cuota inicial no puede ser posterior a la fecha base de cobros.'
-  }
   return null
 }
 
@@ -388,8 +374,6 @@ async function handleSaveFinancing(): Promise<void> {
 
   isSubmittingForm.value = true
   try {
-    const trimmedCode = formData.value.code.trim()
-
     if (editingFinancingId.value) {
       const payload: UpdateFinancingPayload = {
         contract_type_id: formData.value.contract_type_id ? Number(formData.value.contract_type_id) : null,
@@ -398,12 +382,8 @@ async function handleSaveFinancing(): Promise<void> {
         initial_amount: Number(formData.value.initial_amount),
         installment_count: Number(formData.value.installment_count),
         installment_amount: Number(formData.value.installment_amount),
-        initial_due_date: formData.value.initial_due_date || null,
         frequency_base_date: formData.value.frequency_base_date,
         status: formData.value.status
-      }
-      if (trimmedCode) {
-        payload.code = trimmedCode
       }
       await updateFinancing(branchesStore.activeBranchId, editingFinancingId.value, payload)
       showMessage('Financiamiento actualizado exitosamente.')
@@ -416,12 +396,8 @@ async function handleSaveFinancing(): Promise<void> {
         initial_amount: Number(formData.value.initial_amount),
         installment_count: Number(formData.value.installment_count),
         installment_amount: Number(formData.value.installment_amount),
-        initial_due_date: formData.value.initial_due_date || null,
         frequency_base_date: formData.value.frequency_base_date,
         status: formData.value.status
-      }
-      if (trimmedCode) {
-        payload.code = trimmedCode
       }
       await createFinancing(branchesStore.activeBranchId, payload)
       showMessage('Financiamiento registrado exitosamente.')
@@ -921,7 +897,7 @@ watch(
     >
       <v-form id="form-financing" @submit.prevent="handleSaveFinancing">
         <v-row density="compact" class="mb-1">
-          <v-col cols="12" sm="7">
+          <v-col cols="12">
             <AppPaginatedSelect
               v-model="formData.client_id"
               :fetch-options="fetchPersonsOptions"
@@ -935,7 +911,10 @@ watch(
               data-testid="select-financing-client"
             />
           </v-col>
-          <v-col cols="12" sm="5">
+        </v-row>
+
+        <v-row density="compact" class="mb-1">
+          <v-col cols="12" sm="6">
             <AppPaginatedSelect
               v-model="formData.contract_type_id"
               :fetch-options="fetchContractTypesOptions"
@@ -947,19 +926,6 @@ watch(
               clearable
               density="comfortable"
               data-testid="select-financing-contract-type"
-            />
-          </v-col>
-        </v-row>
-
-        <v-row density="compact" class="mb-1">
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="formData.code"
-              label="Código"
-              placeholder="Autogenerado si se deja vacío"
-              variant="outlined"
-              density="comfortable"
-              data-testid="input-financing-code"
             />
           </v-col>
           <v-col cols="12" sm="6">
@@ -1082,7 +1048,7 @@ watch(
         </div>
 
         <v-row density="compact">
-          <v-col cols="12" sm="4">
+          <v-col cols="12" sm="6">
             <AppPaginatedSelect
               v-model="formData.frequency_id"
               :fetch-options="fetchFrequenciesOptions"
@@ -1095,7 +1061,7 @@ watch(
               data-testid="select-financing-frequency"
             />
           </v-col>
-          <v-col cols="12" sm="4">
+          <v-col cols="12" sm="6">
             <v-text-field
               v-model="formData.frequency_base_date"
               label="Fecha Base / Inicio *"
@@ -1103,19 +1069,6 @@ watch(
               variant="outlined"
               density="comfortable"
               data-testid="input-financing-base-date"
-            />
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-text-field
-              v-model="formData.initial_due_date"
-              label="Fecha Cuota Inicial"
-              type="date"
-              variant="outlined"
-              density="comfortable"
-              clearable
-              hint="Opcional. Si se omite, la inicial cae en la Fecha Base y la Cuota #1 en el siguiente período."
-              persistent-hint
-              data-testid="input-financing-initial-date"
             />
           </v-col>
         </v-row>

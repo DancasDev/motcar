@@ -124,7 +124,6 @@ class Financing {
         $installmentCount  = (int) $financing['installment_count'];
         $installmentAmount = (float) $financing['installment_amount'];
         $frequencyBaseDate = $financing['frequency_base_date'];
-        $initialDueDate    = !empty($financing['initial_due_date']) ? $financing['initial_due_date'] : $frequencyBaseDate;
         $issueDate         = date('Y-m-d');
         $now               = date('Y-m-d H:i:s');
         $toInsert          = [];
@@ -142,7 +141,7 @@ class Financing {
                 'total_amount'          => $initialAmount,
                 'paid_amount'           => 0.00,
                 'issue_date'            => $issueDate,
-                'due_date'              => $initialDueDate,
+                'due_date'              => $frequencyBaseDate,
                 'status'                => '0',
                 'is_disabled'           => '0',
                 'created_at'            => $now,
@@ -155,8 +154,7 @@ class Financing {
         $installmentsGenerated = 0;
 
         if ($maxExisting < $installmentCount) {
-            $sanGroup            = $this->getSanGroup();
-            $initialSharesAnchor = ($initialDueDate === $frequencyBaseDate);
+            $sanGroup = $this->getSanGroup();
 
             if ($maxExisting === 0) {
                 $anchorDate = $frequencyBaseDate;
@@ -165,12 +163,7 @@ class Financing {
             }
 
             for ($i = $maxExisting + 1; $i <= $installmentCount; $i++) {
-                if ($maxExisting === 0) {
-                    $step = $initialSharesAnchor ? $i : ($i - 1);
-                } else {
-                    $step = $i - $maxExisting;
-                }
-
+                $step    = ($maxExisting === 0) ? $i : ($i - $maxExisting);
                 $dueDate = $sanGroup->calculateDueDate($anchorDate, $frequencyCode, $step);
 
                 if ($i < $installmentCount) {
@@ -323,7 +316,7 @@ class Financing {
         $f = $this->db->table('fnc_financing as f')
             ->select(
                 'f.id, f.code, f.status, f.is_overdue, f.awarded_at, f.total_amount, f.initial_amount, ' .
-                'f.installment_amount, f.installment_count, f.initial_due_date, f.frequency_base_date, ' .
+                'f.installment_amount, f.installment_count, f.frequency_base_date, ' .
                 'f.contract_type_id, f.benefit_metadata, f.client_id, ' .
                 'fr.code as frequency_code, fr.name as frequency_name, ' .
                 'ct.name as contract_type_name, ' .
@@ -454,7 +447,6 @@ class Financing {
                 'financed_amount'     => round($totalAmount - $initialAmount, 2),
                 'installment_amount'  => (float) $f['installment_amount'],
                 'installment_count'   => (int) $f['installment_count'],
-                'initial_due_date'    => $f['initial_due_date'],
                 'frequency_base_date' => $f['frequency_base_date'],
                 'frequency_code'      => $f['frequency_code'],
                 'frequency_name'      => $f['frequency_name'],
