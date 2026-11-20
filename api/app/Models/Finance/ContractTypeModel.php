@@ -18,7 +18,7 @@ class ContractTypeModel extends BaseModel {
     protected $validationRules = [
         'code'               => 'required|alpha_dash|max_length[40]|is_unique[fnc_contract_type.code,id,{id}]',
         'name'               => 'required|string|max_length[80]',
-        'scope'              => 'permit_empty|in_list[0]',
+        'scope'              => 'permit_empty|in_list[0,1]',
         'metadata_schema_id' => 'permit_empty|is_natural_no_zero|is_not_unique_multi_condition[glb_metadata_schema.id,is_disabled:0;deleted_at:IS_NULL]',
         'is_disabled'        => 'permit_empty|in_list[0,1]',
     ];

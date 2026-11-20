@@ -27,7 +27,7 @@ class ReceivableModel extends BaseModel {
         'client_id'             => 'required|is_natural_no_zero|is_not_unique_multi_condition[glb_person.id,is_disabled:0;deleted_at:IS_NULL]',
         'receivable_concept_id' => 'required|is_natural_no_zero|is_not_unique_multi_condition[acc_receivable_concept.id,is_disabled:0;deleted_at:IS_NULL]',
         'description'           => 'required|string|max_length[150]',
-        'origin_type'           => 'required|in_list[0]',
+        'origin_type'           => 'required|in_list[0,1]',
         'origin_id'             => 'required|is_natural_no_zero',
         'total_amount'          => 'required|decimal|greater_than[0]',
         'paid_amount'           => 'permit_empty|decimal',

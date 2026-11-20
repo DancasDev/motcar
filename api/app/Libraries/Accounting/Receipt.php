@@ -4,6 +4,7 @@ namespace App\Libraries\Accounting;
 
 use Config\Database;
 use CodeIgniter\Database\BaseConnection;
+use App\Libraries\Finance\Financing;
 use App\Libraries\Finance\SanGroup;
 
 /**
@@ -20,6 +21,7 @@ class Receipt {
     private BaseConnection $db;
     private Payment $payment;
     private ?SanGroup $sanGroup = null;
+    private ?Financing $financing = null;
 
     public function __construct(?BaseConnection $db = null, ?Payment $payment = null, ?SanGroup $sanGroup = null) {
         $this->db       = $db ?? Database::connect();
@@ -460,6 +462,7 @@ class Receipt {
 
         // Sincronizar morosidad del cliente e invalidar caché
         $this->getSanGroup()->syncOverdueForClient($branchId, $clientId);
+        $this->getFinancing()->syncOverdueForClient($branchId, $clientId);
         model(\App\Models\Accounting\ReceiptModel::class)->removeDetailByCache($branchId, $receiptId);
 
         return [
@@ -635,6 +638,7 @@ class Receipt {
 
         // Sincronizar morosidad del cliente e invalidar caché
         $this->getSanGroup()->syncOverdueForClient($branchId, $clientId);
+        $this->getFinancing()->syncOverdueForClient($branchId, $clientId);
         model(\App\Models\Accounting\ReceiptModel::class)->removeDetailByCache($branchId, $receiptId);
 
         return [
@@ -667,5 +671,12 @@ class Receipt {
             $this->sanGroup = new SanGroup($this->db);
         }
         return $this->sanGroup;
+    }
+
+    private function getFinancing(): Financing {
+        if ($this->financing === null) {
+            $this->financing = new Financing($this->db, $this->sanGroup);
+        }
+        return $this->financing;
     }
 }
