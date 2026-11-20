@@ -21,7 +21,12 @@ import type {
   DefaulterItem,
   CollectionCalendarReport,
   AwardedBenefitItem,
-  ParticipantStatement
+  ParticipantStatement,
+  FinancingItem,
+  CreateFinancingPayload,
+  UpdateFinancingPayload,
+  GenerateFinancingReceivablesSummary,
+  FinancingStatement
 } from '../types'
 
 // ---------------------------------------------------------------------
@@ -363,6 +368,139 @@ export async function fetchContractPdf(
 ): Promise<Blob> {
   const response = await apiClient.get<Blob>(
     ENDPOINTS.FINANCING.CONTRACT_PDF(branchId, groupId, participantId),
+    { responseType: 'blob' }
+  )
+  return response.data
+}
+
+// ---------------------------------------------------------------------
+// 7. Financiamientos Individuales
+// ---------------------------------------------------------------------
+
+export async function fetchFinancings(
+  branchId: string | number,
+  params?: DataQueryParams
+): Promise<PaginatedResponse<FinancingItem>> {
+  const response = await apiClient.get<PaginatedResponse<FinancingItem>>(
+    ENDPOINTS.FINANCING.DIRECT(branchId),
+    { params }
+  )
+  return response.data
+}
+
+export async function fetchFinancingById(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<FinancingItem>> {
+  const response = await apiClient.get<ApiResponse<FinancingItem>>(
+    ENDPOINTS.FINANCING.DIRECT_BY_ID(branchId, financingId)
+  )
+  return response.data
+}
+
+export async function createFinancing(
+  branchId: string | number,
+  payload: CreateFinancingPayload
+): Promise<ApiResponse<{ id: number }>> {
+  const response = await apiClient.post<ApiResponse<{ id: number }>>(
+    ENDPOINTS.FINANCING.DIRECT(branchId),
+    payload
+  )
+  return response.data
+}
+
+export async function updateFinancing(
+  branchId: string | number,
+  financingId: string | number,
+  payload: UpdateFinancingPayload
+): Promise<ApiResponse<{ id: number; affected: boolean }>> {
+  const response = await apiClient.put<ApiResponse<{ id: number; affected: boolean }>>(
+    ENDPOINTS.FINANCING.DIRECT_BY_ID(branchId, financingId),
+    payload
+  )
+  return response.data
+}
+
+export async function deleteFinancing(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<{ id: number; affected: boolean }>> {
+  const response = await apiClient.delete<ApiResponse<{ id: number; affected: boolean }>>(
+    ENDPOINTS.FINANCING.DIRECT_BY_ID(branchId, financingId)
+  )
+  return response.data
+}
+
+export async function restoreFinancing(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<{ id: number; affected: boolean }>> {
+  const response = await apiClient.patch<ApiResponse<{ id: number; affected: boolean }>>(
+    ENDPOINTS.FINANCING.DIRECT_BY_ID(branchId, financingId)
+  )
+  return response.data
+}
+
+export async function generateFinancingReceivables(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<GenerateFinancingReceivablesSummary>> {
+  const response = await apiClient.post<ApiResponse<GenerateFinancingReceivablesSummary>>(
+    ENDPOINTS.FINANCING.DIRECT_GENERATE_RECEIVABLES(branchId, financingId),
+    {}
+  )
+  return response.data
+}
+
+export async function fetchFinancingStatement(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<FinancingStatement>> {
+  const response = await apiClient.get<ApiResponse<FinancingStatement>>(
+    ENDPOINTS.FINANCING.DIRECT_STATEMENT(branchId, financingId)
+  )
+  return response.data
+}
+
+export async function fetchFinancingContract(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<ContractDetailData>> {
+  const response = await apiClient.get<ApiResponse<ContractDetailData>>(
+    ENDPOINTS.FINANCING.DIRECT_CONTRACT(branchId, financingId)
+  )
+  return response.data
+}
+
+export async function emitFinancingContract(
+  branchId: string | number,
+  financingId: string | number
+): Promise<ApiResponse<{ id: number }>> {
+  const response = await apiClient.post<ApiResponse<{ id: number }>>(
+    ENDPOINTS.FINANCING.DIRECT_CONTRACT(branchId, financingId),
+    {}
+  )
+  return response.data
+}
+
+export async function signFinancingContract(
+  branchId: string | number,
+  financingId: string | number,
+  payload: SignContractPayload
+): Promise<ApiResponse<{ id: number; affected: boolean }>> {
+  const response = await apiClient.put<ApiResponse<{ id: number; affected: boolean }>>(
+    ENDPOINTS.FINANCING.DIRECT_CONTRACT_SIGN(branchId, financingId),
+    payload
+  )
+  return response.data
+}
+
+export async function fetchFinancingContractPdf(
+  branchId: string | number,
+  financingId: string | number
+): Promise<Blob> {
+  const response = await apiClient.get<Blob>(
+    ENDPOINTS.FINANCING.DIRECT_CONTRACT_PDF(branchId, financingId),
     { responseType: 'blob' }
   )
   return response.data

@@ -109,11 +109,12 @@ const navItems: NavItem[] = [
     ]
   },
   {
-    title: 'Autofinanciamiento Colectivo',
+    title: 'Financiamiento',
     icon: 'mdi-handshake-outline',
     testId: 'nav-financing',
     children: [
-      { to: '/financing/groups', icon: 'mdi-account-group-outline', title: 'Grupos SAM', testId: 'nav-financing-groups' }
+      { to: '/financing/groups', icon: 'mdi-account-group-outline', title: 'Grupos SAM', testId: 'nav-financing-groups' },
+      { to: '/financing/direct', icon: 'mdi-cash-clock', title: 'Financiamientos', testId: 'nav-financing-direct' }
     ]
   },
   {
@@ -130,7 +131,7 @@ const navItems: NavItem[] = [
   }
 ]
 
-const openedNavGroups = ref<string[]>(['Directorios', 'Autofinanciamiento Colectivo', 'Cobranzas y Caja'])
+const openedNavGroups = ref<string[]>(['Directorios', 'Financiamiento', 'Cobranzas y Caja'])
 </script>
 
 <template>

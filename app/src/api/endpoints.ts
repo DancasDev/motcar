@@ -104,7 +104,20 @@ export const ENDPOINTS = {
       groupId: string | number,
       participantId: string | number
     ) =>
-      `/v1/branches/${branchId}/financing/groups/${groupId}/participants/${participantId}/reports/statement`
+      `/v1/branches/${branchId}/financing/groups/${groupId}/participants/${participantId}/reports/statement`,
+    DIRECT: (branchId: string | number) => `/v1/branches/${branchId}/financing`,
+    DIRECT_BY_ID: (branchId: string | number, financingId: string | number) =>
+      `/v1/branches/${branchId}/financing/${financingId}`,
+    DIRECT_GENERATE_RECEIVABLES: (branchId: string | number, financingId: string | number) =>
+      `/v1/branches/${branchId}/financing/${financingId}/generate-receivables`,
+    DIRECT_STATEMENT: (branchId: string | number, financingId: string | number) =>
+      `/v1/branches/${branchId}/financing/${financingId}/reports/statement`,
+    DIRECT_CONTRACT: (branchId: string | number, financingId: string | number) =>
+      `/v1/branches/${branchId}/financing/${financingId}/contract`,
+    DIRECT_CONTRACT_SIGN: (branchId: string | number, financingId: string | number) =>
+      `/v1/branches/${branchId}/financing/${financingId}/contract/sign`,
+    DIRECT_CONTRACT_PDF: (branchId: string | number, financingId: string | number) =>
+      `/v1/branches/${branchId}/financing/${financingId}/contract/pdf`
   },
   ACCOUNTING: {
     // Maestros Globales
