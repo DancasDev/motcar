@@ -85,6 +85,13 @@ class MetadataSchemaSeeder extends Seeder {
                 'unique_keys'    => null,
                 'is_disabled'    => '0',
             ],
+            [
+                'code'           => 'contract_type_2',
+                'table_name'     => 'fnc_financing',
+                'storage_column' => 'benefit_metadata',
+                'unique_keys'    => null,
+                'is_disabled'    => '0',
+            ],
         ];
     }
 }

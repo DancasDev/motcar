@@ -328,6 +328,15 @@ class ModuleSeeder extends Seeder {
             ],
             [
                 'module_category_id' => $finance,
+                'code'               => 'fnc_financings',
+                'name'               => ['es' => 'Financiamientos', 'en' => 'Financings'],
+                'description'        => ['es' => 'Financiamientos individuales y planes de pago directos.', 'en' => 'Individual financings and direct payment plans.'],
+                'is_developing'      => '0',
+                'scope'              => '0,1',
+                'payload_schema'     => null,
+            ],
+            [
+                'module_category_id' => $finance,
                 'code'               => 'fnc_contract_documents',
                 'name'               => ['es' => 'Contratos SAM', 'en' => 'SAM Contracts'],
                 'description'        => ['es' => 'Documentos contractuales y formalización de compromisos de pago.', 'en' => 'Contractual documents and formalization of payment commitments.'],

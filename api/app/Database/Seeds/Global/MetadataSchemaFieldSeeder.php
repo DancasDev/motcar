@@ -85,78 +85,88 @@ class MetadataSchemaFieldSeeder extends Seeder {
     }
 
     private function getCustomData(): array {
+        return array_merge(
+            [
+                // payment_account_mobile_payment
+                [
+                    'schema_code'      => 'payment_account_mobile_payment',
+                    'type_code'        => 'text',
+                    'code'             => 'id_document',
+                    'attribute_values' => ['label' => 'Documento de Identidad'],
+                    'position'         => 1,
+                    'is_disabled'      => '0',
+                ],
+                [
+                    'schema_code'      => 'payment_account_mobile_payment',
+                    'type_code'        => 'tel',
+                    'code'             => 'phone_number',
+                    'attribute_values' => ['label' => 'Teléfono'],
+                    'position'         => 2,
+                    'is_disabled'      => '0',
+                ],
+                [
+                    'schema_code'      => 'payment_account_mobile_payment',
+                    'type_code'        => 'text',
+                    'code'             => 'account_holder',
+                    'attribute_values' => ['label' => 'Propietario (Dueño de la Cuenta)'],
+                    'position'         => 3,
+                    'is_disabled'      => '0',
+                ],
+
+                // payment_account_bank_transfer
+                [
+                    'schema_code'      => 'payment_account_bank_transfer',
+                    'type_code'        => 'text',
+                    'code'             => 'account_number',
+                    'attribute_values' => ['label' => 'Número de Cuenta'],
+                    'position'         => 1,
+                    'is_disabled'      => '0',
+                ],
+                [
+                    'schema_code'      => 'payment_account_bank_transfer',
+                    'type_code'        => 'text',
+                    'code'             => 'id_document',
+                    'attribute_values' => ['label' => 'Documento de Identidad'],
+                    'position'         => 2,
+                    'is_disabled'      => '0',
+                ],
+                [
+                    'schema_code'      => 'payment_account_bank_transfer',
+                    'type_code'        => 'text',
+                    'code'             => 'beneficiary_name',
+                    'attribute_values' => ['label' => 'Nombre del Beneficiario'],
+                    'position'         => 3,
+                    'is_disabled'      => '0',
+                ],
+
+                // payment_account_zelle
+                [
+                    'schema_code' => 'payment_account_zelle',
+                    'type_code'   => 'email',
+                    'code'        => 'email',
+                    'position'    => 1,
+                    'is_disabled' => '0',
+                ],
+                [
+                    'schema_code' => 'payment_account_zelle',
+                    'type_code'   => 'text',
+                    'code'        => 'account_holder',
+                    'position'    => 2,
+                    'is_disabled' => '0',
+                ],
+            ],
+            $this->getMotorcycleFields('contract_type_1'),
+            $this->getMotorcycleFields('contract_type_2')
+        );
+    }
+
+    /**
+     * Campos del beneficio motocicleta para esquemas de contratos SAN y Financiamiento.
+     */
+    private function getMotorcycleFields(string $schemaCode): array {
         return [
-            // payment_account_mobile_payment
             [
-                'schema_code'      => 'payment_account_mobile_payment',
-                'type_code'        => 'text',
-                'code'             => 'id_document',
-                'attribute_values' => ['label' => 'Documento de Identidad'],
-                'position'         => 1,
-                'is_disabled'      => '0',
-            ],
-            [
-                'schema_code'      => 'payment_account_mobile_payment',
-                'type_code'        => 'tel',
-                'code'             => 'phone_number',
-                'attribute_values' => ['label' => 'Teléfono'],
-                'position'         => 2,
-                'is_disabled'      => '0',
-            ],
-            [
-                'schema_code'      => 'payment_account_mobile_payment',
-                'type_code'        => 'text',
-                'code'             => 'account_holder',
-                'attribute_values' => ['label' => 'Propietario (Dueño de la Cuenta)'],
-                'position'         => 3,
-                'is_disabled'      => '0',
-            ],
-
-            // payment_account_bank_transfer
-            [
-                'schema_code'      => 'payment_account_bank_transfer',
-                'type_code'        => 'text',
-                'code'             => 'account_number',
-                'attribute_values' => ['label' => 'Número de Cuenta'],
-                'position'         => 1,
-                'is_disabled'      => '0',
-            ],
-            [
-                'schema_code'      => 'payment_account_bank_transfer',
-                'type_code'        => 'text',
-                'code'             => 'id_document',
-                'attribute_values' => ['label' => 'Documento de Identidad'],
-                'position'         => 2,
-                'is_disabled'      => '0',
-            ],
-            [
-                'schema_code'      => 'payment_account_bank_transfer',
-                'type_code'        => 'text',
-                'code'             => 'beneficiary_name',
-                'attribute_values' => ['label' => 'Nombre del Beneficiario'],
-                'position'         => 3,
-                'is_disabled'      => '0',
-            ],
-
-            // payment_account_zelle
-            [
-                'schema_code' => 'payment_account_zelle',
-                'type_code'   => 'email',
-                'code'        => 'email',
-                'position'    => 1,
-                'is_disabled' => '0',
-            ],
-            [
-                'schema_code' => 'payment_account_zelle',
-                'type_code'   => 'text',
-                'code'        => 'account_holder',
-                'position'    => 2,
-                'is_disabled' => '0',
-            ],
-
-            // contract_type_1 (Beneficio: Motocicleta según contrato SAM)
-            [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'text',
                 'code'        => 'brand',
                 'position'    => 1,
@@ -168,7 +178,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'text',
                 'code'        => 'model',
                 'position'    => 2,
@@ -180,7 +190,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'number',
                 'code'        => 'year',
                 'position'    => 3,
@@ -191,7 +201,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'text',
                 'code'        => 'plate',
                 'position'    => 4,
@@ -202,7 +212,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'number',
                 'code'        => 'reference_value',
                 'position'    => 5,
@@ -214,7 +224,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'text',
                 'code'        => 'chassis_serial',
                 'position'    => 6,
@@ -225,7 +235,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'text',
                 'code'        => 'engine_serial',
                 'position'    => 7,
@@ -236,7 +246,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code' => 'contract_type_1',
+                'schema_code' => $schemaCode,
                 'type_code'   => 'text',
                 'code'        => 'color',
                 'position'    => 8,
@@ -247,7 +257,7 @@ class MetadataSchemaFieldSeeder extends Seeder {
                 'is_disabled' => '0',
             ],
             [
-                'schema_code'      => 'contract_type_1',
+                'schema_code'      => $schemaCode,
                 'type_code'        => 'file',
                 'code'             => 'photos',
                 'position'         => 9,
