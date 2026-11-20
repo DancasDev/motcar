@@ -80,6 +80,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: 'Participantes del Grupo - Motcar App', requiresAuth: true, showBranchSelector: true }
       },
       {
+        path: 'financing/direct',
+        name: 'FinancingDirect',
+        component: () => import('@/modules/financing/views/FinancingsView.vue'),
+        meta: { title: 'Financiamientos - Motcar App', requiresAuth: true, showBranchSelector: true }
+      },
+      {
         path: 'financing/defaulters',
         name: 'FinancingDefaulters',
         component: () => import('@/modules/financing/views/DefaultersView.vue'),

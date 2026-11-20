@@ -39,7 +39,13 @@ class ReceivableConceptSeeder extends Seeder {
             [
                 'code'        => 'base_installment',
                 'name'        => 'Cuota Ordinaria Base',
-                'template'    => 'Cuota {installment_number} - {group_name}',
+                'template'    => 'Cuota {installment_number} - {reference}',
+                'is_disabled' => '0',
+            ],
+            [
+                'code'        => 'initial_payment',
+                'name'        => 'Cuota Inicial',
+                'template'    => 'Cuota Inicial - {code}',
                 'is_disabled' => '0',
             ],
             [

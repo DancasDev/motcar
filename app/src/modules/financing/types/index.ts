@@ -405,3 +405,122 @@ export interface ParticipantStatement {
   installments: StatementInstallment[]
 }
 
+// ---------------------------------------------------------------------
+// 7. DTOs de Financiamientos Individuales
+// ---------------------------------------------------------------------
+
+export interface FinancingItem {
+  id: string | number
+  branch_id: string | number
+  branch_name?: string
+  client_id: string | number
+  client_first_name?: string
+  client_last_name?: string
+  client_identification_type?: string | null
+  client_identification_value?: string | null
+  client_phone_primary?: string | null
+  contract_type_id?: string | number | null
+  contract_type_code?: string | null
+  contract_type_name?: string | null
+  contract_type_metadata_schema_id?: string | number | null
+  frequency_id: string | number
+  frequency_code?: string
+  frequency_name?: string | Record<string, string>
+  code: string
+  total_amount: string | number
+  initial_amount: string | number
+  financed_amount?: number
+  installment_count: string | number
+  installment_amount: string | number
+  frequency_base_date: string
+  status: string | number
+  is_overdue?: string | number
+  awarded_at?: string | null
+  benefit_metadata?: Record<string, unknown> | string | null
+  is_disabled?: string | boolean | number
+  created_at?: string
+  updated_at?: string | null
+}
+
+export interface CreateFinancingPayload {
+  client_id: number | string
+  contract_type_id?: number | string | null
+  frequency_id: number | string
+  total_amount: number | string
+  initial_amount: number | string
+  installment_count: number | string
+  installment_amount?: number | string | null
+  frequency_base_date: string
+  status?: string
+  is_disabled?: string
+}
+
+export interface UpdateFinancingPayload {
+  contract_type_id?: number | string | null
+  frequency_id?: number | string
+  total_amount?: number | string
+  initial_amount?: number | string
+  installment_count?: number | string
+  installment_amount?: number | string | null
+  frequency_base_date?: string
+  status?: string
+  awarded_at?: string | null
+  benefit_metadata?: Record<string, unknown> | null
+  is_disabled?: string
+}
+
+export interface GenerateFinancingReceivablesSummary {
+  financing_id: number
+  code: string
+  initial_generated: number
+  installments_generated: number
+  generated: number
+  preserved_installments: number
+}
+
+export interface FinancingStatementInstallment extends StatementInstallment {
+  concept_code?: string | null
+  is_initial?: boolean
+}
+
+export interface FinancingStatement {
+  financing: {
+    id: number
+    code: string
+    status: string
+    is_overdue: boolean
+    is_awarded: boolean
+    awarded_at: string | null
+    total_amount: number
+    initial_amount: number
+    financed_amount: number
+    installment_amount: number
+    installment_count: number
+    frequency_base_date: string
+    frequency_code: string | null
+    frequency_name: string | Record<string, string> | null
+    contract_type_id: number | null
+    contract_type_name: string | null
+    benefit_metadata: Record<string, any> | null
+  }
+  client: {
+    id: number
+    name: string
+    identification_type: string
+    identification_value: string
+    phone: string | null
+  }
+  summary: {
+    total_committed: number
+    total_collected: number
+    total_pending: number
+    installments_total: number
+    installments_paid: number
+    installments_pending: number
+    installments_overdue: number
+    overdue_amount: number
+  }
+  installments: FinancingStatementInstallment[]
+}
+
+

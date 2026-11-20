@@ -53,7 +53,7 @@ class SanGroup {
 
         $concept = $this->db->table('acc_receivable_concept')->where('code', 'base_installment')->get()->getRowArray();
         $conceptId = $concept ? (int) $concept['id'] : 1;
-        $template  = $concept['template'] ?? 'Cuota {installment_number} - {group_name}';
+        $template  = $concept['template'] ?? 'Cuota {installment_number} - {reference}';
 
         $groupName = $group['name'];
         $now       = date('Y-m-d H:i:s');
@@ -132,8 +132,8 @@ class SanGroup {
                 $dueDate = $this->calculateDueDate($anchorDate, $frequencyCode, $step);
 
                 $desc = str_replace(
-                    ['{installment_number}', '{total_installments}', '{group_name}'],
-                    [(string) $i, (string) $installmentCount, $groupName],
+                    ['{installment_number}', '{total_installments}', '{group_name}', '{reference}'],
+                    [(string) $i, (string) $installmentCount, $groupName, $groupName],
                     $template
                 );
 

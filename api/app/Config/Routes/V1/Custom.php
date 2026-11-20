@@ -162,7 +162,7 @@ $routes->group('v1/financing', ['namespace' => 'App\Controllers\V1\Financing', '
 // ─────────────────────────────────────────
 $routes->group('v1/branches/(:num)', ['namespace' => 'App\Controllers\V1\Branches'], function ($routes) {
 
-    // 4.1 FINANCIAMIENTO (Grupos SAM y Participantes)
+    // 4.1 FINANCIAMIENTO (Grupos SAM, Participantes y Financiamientos Individuales)
     $routes->group('financing', ['namespace' => 'App\Controllers\V1\Branches\Financing'], function ($routes) {
         $routes->group('groups', ['namespace' => 'App\Controllers\V1\Branches\Financing\Groups'], function ($routes) {
             $routes->post('',                                   'Home::create/$1',                  ['filter' => 'auth:scope=uri|3,module_code=fnc_san_groups,only_user']);
@@ -232,6 +232,40 @@ $routes->group('v1/branches/(:num)', ['namespace' => 'App\Controllers\V1\Branche
             $routes->get('collection-calendar',   'Home::calendar/$1',             ['filter' => 'auth:scope=uri|3,module_code=fnc_san_groups']);
             $routes->get('awarded-benefits',      'Home::awardedBenefits/$1',      ['filter' => 'auth:scope=uri|3,module_code=fnc_san_groups']);
             $routes->get('participant-statement', 'Home::participantStatement/$1', ['filter' => 'auth:scope=uri|3,module_code=fnc_san_groups']);
+        });
+
+        // Financiamientos individuales
+        $routes->post('',         'Home::create/$1',     ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->get('',          'Home::index/$1',      ['filter' => 'auth:scope=uri|3,module_code=fnc_financings']);
+        $routes->get('(:num)',    'Home::show/$1/$2',    ['filter' => 'auth:scope=uri|3,module_code=fnc_financings']);
+        $routes->put('(:num)',    'Home::update/$1/$2',  ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->delete('(:num)', 'Home::delete/$1/$2',  ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->patch('(:num)',  'Home::restore/$1/$2', ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->put('',          'Home::update/$1',     ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->delete('',       'Home::delete/$1',     ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->patch('',        'Home::restore/$1',    ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->post('(:num)/generate-receivables', 'Home::generateReceivables/$1/$2', ['filter' => 'auth:scope=uri|3,module_code=fnc_financings,only_user']);
+        $routes->get('(:num)/reports/statement',     'Home::statement/$1/$2',           ['filter' => 'auth:scope=uri|3,module_code=fnc_financings']);
+
+        // Bitácora / Notas operativas del financiamiento
+        $routes->group('(:num)/notes', function ($routes) {
+            $routes->post('',         'Notes::create/$1/$2',     ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+            $routes->get('',          'Notes::index/$1/$2',      ['filter' => 'auth:scope=uri|3,module_code=glb_notes']);
+            $routes->get('(:num)',    'Notes::show/$1/$2/$3',    ['filter' => 'auth:scope=uri|3,module_code=glb_notes']);
+            $routes->put('(:num)',    'Notes::update/$1/$2/$3',  ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+            $routes->delete('(:num)', 'Notes::delete/$1/$2/$3',  ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+            $routes->patch('(:num)',  'Notes::restore/$1/$2/$3', ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+            $routes->put('',          'Notes::update/$1/$2',     ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+            $routes->delete('',       'Notes::delete/$1/$2',     ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+            $routes->patch('',        'Notes::restore/$1/$2',    ['filter' => 'auth:scope=uri|3,module_code=glb_notes,only_user']);
+        });
+
+        // Contrato formalizado del financiamiento (1:1)
+        $routes->group('(:num)/contract', function ($routes) {
+            $routes->get('',     'Contract::show/$1/$2',   ['filter' => 'auth:scope=uri|3,module_code=fnc_contract_documents']);
+            $routes->post('',    'Contract::create/$1/$2', ['filter' => 'auth:scope=uri|3,module_code=fnc_contract_documents,only_user']);
+            $routes->get('pdf',  'Contract::pdf/$1/$2',    ['filter' => 'auth:scope=uri|3,module_code=fnc_contract_documents']);
+            $routes->put('sign', 'Contract::sign/$1/$2',   ['filter' => 'auth:scope=uri|3,module_code=fnc_contract_documents,only_user']);
         });
     });
 

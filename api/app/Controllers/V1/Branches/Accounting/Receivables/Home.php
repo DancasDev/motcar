@@ -5,6 +5,7 @@ namespace App\Controllers\V1\Branches\Accounting\Receivables;
 use CodeIgniter\HTTP\Response;
 use App\Controllers\V1\BaseController;
 use App\Controllers\Traits\CrudTraits;
+use App\Libraries\Finance\Financing;
 use App\Libraries\Finance\SanGroup;
 
 /**
@@ -74,12 +75,17 @@ class Home extends BaseController {
      * POST v1/branches/{branch_id}/accounting/receivables/overdue-sync
      */
     public function overdueSync($branchId = null): Response {
-        $sanGroup = new SanGroup($this->model->db);
-        $result   = $sanGroup->syncOverdue($branchId);
+        $sanResult       = (new SanGroup($this->model->db))->syncOverdue($branchId);
+        $financingResult = (new Financing($this->model->db))->syncOverdue($branchId);
 
         return $this->response->setStatusCode(200)->setJSON([
             'status' => 200,
-            'data'   => $result,
+            'data'   => [
+                'processed' => ($sanResult['processed'] ?? 0) + ($financingResult['processed'] ?? 0),
+                'updated'   => ($sanResult['updated'] ?? 0) + ($financingResult['updated'] ?? 0),
+                'san'       => $sanResult,
+                'financing' => $financingResult,
+            ],
         ]);
     }
 

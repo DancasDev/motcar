@@ -59,6 +59,13 @@ class ContractTypeSeeder extends Seeder {
                 'schema_code' => 'contract_type_1',
                 'is_disabled' => '0',
             ],
+            [
+                'code'        => 'financing_motorcycles_v1',
+                'name'        => 'Financiamiento de Motos',
+                'scope'       => '1',
+                'schema_code' => 'contract_type_2',
+                'is_disabled' => '0',
+            ],
         ];
     }
 }
