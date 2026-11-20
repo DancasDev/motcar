@@ -48,7 +48,7 @@ const isLoadingDocument = ref(false)
 
 const contract = ref<ContractDetailData | null>(null)
 const signedDate = ref(new Date().toISOString().split('T')[0])
-const signedFile = ref<File | null>(null)
+const signedFile = ref<File | File[] | null>(null)
 const signError = ref<string | null>(null)
 
 async function loadContract(): Promise<void> {
@@ -155,7 +155,11 @@ async function handleSignContract(): Promise<void> {
     return
   }
 
-  if (!signedFile.value && !contract.value?.file_url) {
+  const fileToUpload = Array.isArray(signedFile.value)
+    ? (signedFile.value[0] ?? null)
+    : signedFile.value
+
+  if (!fileToUpload && !contract.value?.file_url) {
     signError.value = 'Debes seleccionar el archivo digitalizado o escaneado del contrato.'
     return
   }
@@ -172,12 +176,9 @@ async function handleSignContract(): Promise<void> {
     let finalFileUrl = contract.value?.file_url || ''
 
     // 2. Si se seleccionó un archivo nuevo, subirlo al locker privado
-    if (signedFile.value) {
-      const uploadRes = await uploadFileToLocker('documents/contracts/signed', signedFile.value)
-      // Construir URL válida estricta requerida por la API
-      finalFileUrl =
-        uploadRes.url ||
-        `${ENV.API_BASE_URL}/system/storage/${uploadRes.path}`
+    if (fileToUpload) {
+      const uploadRes = await uploadFileToLocker('documents/contracts/signed', fileToUpload)
+      finalFileUrl = uploadRes.url || `${ENV.API_BASE_URL}/system/storage/${uploadRes.path}`
     }
 
     // 3. Registrar firma

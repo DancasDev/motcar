@@ -165,10 +165,7 @@ async function handleSignContract(): Promise<void> {
     let finalFileUrl = contract.value?.file_url || ''
     if (fileToUpload) {
       const uploadRes = await uploadFileToLocker('documents/contracts/signed', fileToUpload)
-      const apiBase = /^https?:\/\//i.test(ENV.API_BASE_URL)
-        ? ENV.API_BASE_URL.replace(/\/$/, '')
-        : `${window.location.origin}${ENV.API_BASE_URL.startsWith('/') ? '' : '/'}${ENV.API_BASE_URL}`.replace(/\/$/, '')
-      finalFileUrl = uploadRes.url || `${apiBase}/system/storage/${uploadRes.path}`
+      finalFileUrl = uploadRes.url || `${ENV.API_BASE_URL}/system/storage/${uploadRes.path}`
     }
 
     await signFinancingContract(branchesStore.activeBranchId, props.financing.id, {

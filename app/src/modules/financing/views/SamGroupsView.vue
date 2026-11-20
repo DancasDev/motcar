@@ -105,7 +105,7 @@ async function fetchFrequencySingle(id: any): Promise<any> {
 // Autocompletado paginado de Tipos de Contrato
 async function fetchContractTypesOptions(params: PaginatedQueryParams): Promise<{ items: any[]; total: number }> {
   try {
-    const dqbFilters: any[] = []
+    const dqbFilters: any[] = [['scope', '0']]
     if (params.search && params.search.trim()) {
       const term = params.search.trim()
       dqbFilters.push(['name', term, 'LIKE', 'AND', 'BOTH'])
