@@ -67,6 +67,9 @@ class ContractRenderer
                 sg.id as group_id, sg.name as group_name,
                 sg.installment_amount, sg.installment_count, sg.participant_max,
                 sg.frequency_id as group_frequency_id,
+                fn.total_amount as financing_total_amount, fn.initial_amount as financing_initial_amount,
+                fn.installment_amount as financing_installment_amount, fn.installment_count as financing_installment_count,
+                fn.frequency_id as financing_frequency_id, fn.benefit_metadata as financing_benefit_metadata,
                 p.first_name, p.last_name, p.identification_type, p.identification_value, p.address, p.city,
                 ref.first_name as referrer_first_name, ref.last_name as referrer_last_name,
                 b.name as branch_name
@@ -74,7 +77,8 @@ class ContractRenderer
             ->join('fnc_contract_type as ct', 'cd.contract_type_id = ct.id', 'left')
             ->join('fnc_san_participant as sp', "cd.origin_type = '0' AND cd.origin_id = sp.id", 'left')
             ->join('fnc_san_group as sg', 'sp.san_group_id = sg.id', 'left')
-            ->join('glb_person as p', 'sp.client_id = p.id', 'left')
+            ->join('fnc_financing as fn', "cd.origin_type = '1' AND cd.origin_id = fn.id", 'left')
+            ->join('glb_person as p', 'p.id = COALESCE(sp.client_id, fn.client_id)', 'left')
             ->join('glb_person as ref', 'sp.referrer_id = ref.id', 'left')
             ->join('glb_branch as b', 'cd.branch_id = b.id', 'left')
             ->where('cd.id', $contractId)
@@ -112,10 +116,12 @@ class ContractRenderer
         $clientIdentification = $clientIdFormatted;
         $clientNationality    = ($idType === '0' || $idType === 'V') ? 'venezolano' : 'extranjero';
         $clientCity           = !empty($contract['city']) ? mb_strtoupper($contract['city'], 'UTF-8') : 'MARACAIBO';
+        $clientAddress        = !empty($contract['address']) ? mb_strtoupper(trim($contract['address']), 'UTF-8') : null;
 
         // 3. Beneficio / Datos de la moto (Obligatorios: marca, modelo y año con XXX si no están asignados; opcionales condicionados si están definidos)
-        $benefitRaw = $contract['benefit_metadata'] ?? null;
-        $benefit = is_array($benefitRaw) ? $benefitRaw : (json_decode($benefitRaw ?? '', true) ?: []);
+        $isFinancing    = (($contract['origin_type'] ?? '0') === '1');
+        $benefitRaw     = $isFinancing ? ($contract['financing_benefit_metadata'] ?? null) : ($contract['benefit_metadata'] ?? null);
+        $benefit        = is_array($benefitRaw) ? $benefitRaw : (json_decode($benefitRaw ?? '', true) ?: []);
         $vehicleBrand   = !empty($benefit['brand']) ? mb_strtoupper($benefit['brand'], 'UTF-8') : 'XXX';
         $vehicleModel   = !empty($benefit['model']) ? mb_strtoupper($benefit['model'], 'UTF-8') : 'XXX';
         $vehicleYear    = !empty($benefit['year']) ? (string) $benefit['year'] : 'XXX';
@@ -125,12 +131,24 @@ class ContractRenderer
         $vehicleEngine  = !empty($benefit['engine_serial']) ? mb_strtoupper($benefit['engine_serial'], 'UTF-8') : null;
 
         // 4. Cuotas y frecuencia
-        $installmentCount  = (int) ($contract['participant_installment_count'] ?? $contract['installment_count'] ?? 1);
-        $installmentAmount = (float) ($contract['participant_installment_amount'] ?? $contract['installment_amount'] ?? 0.0);
-        $totalAmount       = round($installmentCount * $installmentAmount, 2);
-        $refValue          = !empty($benefit['reference_value']) ? (float) $benefit['reference_value'] : $totalAmount;
+        if ($isFinancing) {
+            $installmentCount  = (int) ($contract['financing_installment_count'] ?? 1);
+            $installmentAmount = (float) ($contract['financing_installment_amount'] ?? 0.0);
+            $totalAmount       = (float) ($contract['financing_total_amount'] ?? round($installmentCount * $installmentAmount, 2));
+            $initialAmount     = (float) ($contract['financing_initial_amount'] ?? 0.0);
+            $financedAmount    = max(0.0, round($totalAmount - $initialAmount, 2));
+            $freqId            = $contract['financing_frequency_id'] ?? null;
+        } else {
+            $installmentCount  = (int) ($contract['participant_installment_count'] ?? $contract['installment_count'] ?? 1);
+            $installmentAmount = (float) ($contract['participant_installment_amount'] ?? $contract['installment_amount'] ?? 0.0);
+            $totalAmount       = round($installmentCount * $installmentAmount, 2);
+            $initialAmount     = 0.0;
+            $financedAmount    = $totalAmount;
+            $freqId            = $contract['participant_frequency_id'] ?? $contract['group_frequency_id'] ?? null;
+        }
 
-        $freqId = $contract['participant_frequency_id'] ?? $contract['group_frequency_id'] ?? null;
+        $refValue = !empty($benefit['reference_value']) ? (float) $benefit['reference_value'] : $totalAmount;
+
         $freqCode = 'monthly';
         if ($freqId) {
             $freqRow = $this->db->table('fnc_frequency')->select('code')->where('id', $freqId)->limit(1)->get()->getRowArray();
@@ -162,15 +180,20 @@ class ContractRenderer
         $groupMax = !empty($contract['participant_max']) ? (int) $contract['participant_max'] : 10;
 
         // 5. Formateo de números y montos en palabras
-        $formatter = new NumberFormatter('es', NumberFormatter::SPELLOUT);
+        $formatter              = new NumberFormatter('es', NumberFormatter::SPELLOUT);
         $installmentCountWords  = $formatter->format($installmentCount);
         $periodMonthsWords      = $formatter->format($periodMonths);
-        $installmentAmountWords = mb_strtoupper($formatter->format((int) $installmentAmount), 'UTF-8');
-        $totalAmountWords       = mb_strtoupper($formatter->format((int) $totalAmount), 'UTF-8');
+        $periodMonthsPadded     = str_pad((string) $periodMonths, 2, '0', STR_PAD_LEFT);
+        $installmentAmountWords = $this->spellAmount($formatter, $installmentAmount);
+        $totalAmountWords       = $this->spellAmount($formatter, $totalAmount);
+        $initialAmountWords     = $this->spellAmount($formatter, $initialAmount);
+        $financedAmountWords    = $this->spellAmount($formatter, $financedAmount);
 
-        $installmentAmountFormatted = (fmod($installmentAmount, 1.0) == 0.0) ? (string) ((int) $installmentAmount) : number_format($installmentAmount, 2, '.', '');
-        $totalAmountFormatted       = (fmod($totalAmount, 1.0) == 0.0) ? (string) ((int) $totalAmount) : number_format($totalAmount, 2, '.', '');
-        $referenceValueFormatted    = (fmod($refValue, 1.0) == 0.0) ? (string) ((int) $refValue) : number_format($refValue, 2, '.', '');
+        $installmentAmountFormatted = $this->formatAmount($installmentAmount);
+        $totalAmountFormatted       = $this->formatAmount($totalAmount);
+        $initialAmountFormatted     = $this->formatAmount($initialAmount);
+        $financedAmountFormatted    = $this->formatAmount($financedAmount);
+        $referenceValueFormatted    = $this->formatAmount($refValue);
 
         $logoPath = APPPATH . 'Views/Contracts/assets/motcar_logo_clean.png';
         if (!file_exists($logoPath)) {
@@ -186,6 +209,7 @@ class ContractRenderer
             'client_identification'       => $clientIdentification,
             'client_id_formatted'         => $clientIdFormatted,
             'client_city'                 => $clientCity,
+            'client_address'              => $clientAddress,
             'vehicle_brand'               => $vehicleBrand,
             'vehicle_model'               => $vehicleModel,
             'vehicle_year'                => $vehicleYear,
@@ -197,6 +221,7 @@ class ContractRenderer
             'installment_count_words'     => $installmentCountWords,
             'period_months'               => $periodMonths,
             'period_months_words'         => $periodMonthsWords,
+            'period_months_padded'        => $periodMonthsPadded,
             'frequency_name'              => $frequencyName,
             'installment_amount'          => $installmentAmount,
             'installment_amount_words'    => $installmentAmountWords,
@@ -204,10 +229,34 @@ class ContractRenderer
             'total_amount'                => $totalAmount,
             'total_amount_words'          => $totalAmountWords,
             'total_amount_formatted'      => $totalAmountFormatted,
+            'initial_amount'              => $initialAmount,
+            'initial_amount_words'        => $initialAmountWords,
+            'initial_amount_formatted'    => $initialAmountFormatted,
+            'financed_amount'             => $financedAmount,
+            'financed_amount_words'       => $financedAmountWords,
+            'financed_amount_formatted'   => $financedAmountFormatted,
             'reference_value_formatted'   => $referenceValueFormatted,
             'group_max'                   => $groupMax,
             'logo_path'                   => $logoPath,
         ];
+    }
+
+    private function spellAmount(NumberFormatter $formatter, float $amount): string
+    {
+        $rounded = round($amount, 2);
+        $whole   = (int) floor($rounded);
+        $cents   = (int) round(($rounded - $whole) * 100);
+        $words   = mb_strtoupper((string) $formatter->format($whole), 'UTF-8');
+
+        return $cents > 0 ? $words . ' CON ' . sprintf('%02d/100', $cents) : $words;
+    }
+
+    private function formatAmount(float $amount): string
+    {
+        $rounded = round($amount, 2);
+        return fmod($rounded, 1.0) == 0.0
+            ? (string) ((int) $rounded)
+            : number_format($rounded, 2, '.', '');
     }
 
     /**
